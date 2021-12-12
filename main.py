@@ -1,5 +1,4 @@
 import subprocess
-from binascii import unhexlify
 import os
 from blockchain_parser.blockchain import Blockchain
 import sqlite3
