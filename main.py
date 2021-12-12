@@ -93,7 +93,7 @@ for block in blockchain.get_ordered_blocks(os.path.expanduser('~/.bitcoin/regtes
                 insert_record(conn, output.scriptPubKey, tx.txid,
                               COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_PUBKEY, block.height, index)
         for (index, input) in enumerate(c_tx.vin):
-            detected_text = find_string(input.scriptSig)
+            detected_text = find_string(input.scriptSig, 4)
             if detected_text:
                 insert_record(conn, input.scriptSig, tx.txid,
                               COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_SIG, block.height, index)
