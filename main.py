@@ -1,3 +1,4 @@
+import subprocess
 from binascii import unhexlify
 import os
 from blockchain_parser.blockchain import Blockchain
@@ -31,17 +32,15 @@ def setup_db() -> sqlite3.Connection:
     c = conn.cursor()
     c.execute(
         ''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='cryptoData' ''')
-    if c.fetchone()[0] == 1:
-        print('Table already exists.')
-    else:
+    if not c.fetchone()[0] == 1:
         c.execute('''CREATE TABLE cryptoData(
             DATA TEXT NOT NULL,
             TXID CHAR(64) NOT NULL,
             COIN TEXT NOT NULL,
             DATA_TYPE TEXT NOT NULL,
             EXTRA_INDEX INTEGER,
-            PRIMARY KEY (TXID, EXTRA_INDEX),
-            UNIQUE(TXID, EXTRA_INDEX)
+            PRIMARY KEY (TXID, EXTRA_INDEX, DATA_TYPE),
+            UNIQUE(TXID, EXTRA_INDEX, DATA_TYPE)
         );''')
 
         print("Table successfully created")
@@ -64,7 +63,6 @@ def get_records(conn: sqlite3.Connection, txid: str, extra_index: int) -> None:
 
 
 conn = setup_db()
-# get_records(conn, 'txid_0', 0)
 
 
 def detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
@@ -73,6 +71,15 @@ def detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
             if code == bitcoin.core.script.OP_RETURN:
                 return True
     return False
+
+
+def find_string(bytestring: bytes, min: int = 10) -> str:
+    cmd = "strings -n {}".format(min)
+    process = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    process.stdin.write(bytestring)
+    output = process.communicate()[0]
+    return output.decode("ascii").strip()
 
 
 # To get the blocks ordered by height, you need to provide the path of the
@@ -84,21 +91,20 @@ for block in blockchain.get_ordered_blocks(os.path.expanduser('~/.bitcoin/regtes
     for tx in block.transactions:
         c_tx = bitcoin.core.CTransaction.deserialize(tx.hex)
         # do some simple OP_RETURN detection
-        for (index, out) in enumerate(c_tx.vout):
-            if detect_op_return_output(out.scriptPubKey):
-                # print("\nOP RETURN FOUND", out)
-                insert_record(conn, out.scriptPubKey, tx.txid,
+        for (index, output) in enumerate(c_tx.vout):
+            if detect_op_return_output(output.scriptPubKey):
+                insert_record(conn, output.scriptPubKey, tx.txid,
                               COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_PUBKEY, index)
-        # for (index, input) in enumerate(c_tx.vin):
-            # print(input, block.height)
-
-
-test_string = "004d7273206475636b206973207665727920636f6e6365726e65642c207665727920636f6e6365726e65642e00"
-text_bytes = unhexlify(test_string)
-print(text_bytes.decode("ascii"))
-
+        for (index, input) in enumerate(c_tx.vin):
+            detected_text = find_string(input.scriptSig)
+            if detected_text:
+                insert_record(conn, input.scriptSig, tx.txid,
+                              COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_SIG, index)
 
 c = conn.cursor()
-c.execute("SELECT * FROM cryptoData")
-result = c.fetchall()
-# print(result)
+c.execute("SELECT data FROM cryptoData WHERE data_type=?",
+          (DATATYPE.SCRIPT_SIG.value, ))
+results = c.fetchall()
+for result in results:
+    for potential_string in result:
+        print(find_string(potential_string))
