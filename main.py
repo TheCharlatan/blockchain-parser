@@ -38,6 +38,7 @@ def setup_db() -> sqlite3.Connection:
             TXID CHAR(64) NOT NULL,
             COIN TEXT NOT NULL,
             DATA_TYPE TEXT NOT NULL,
+            BLOCK_HEIGHT INTEGER NOT NULL,
             EXTRA_INDEX INTEGER,
             PRIMARY KEY (TXID, EXTRA_INDEX, DATA_TYPE),
             UNIQUE(TXID, EXTRA_INDEX, DATA_TYPE)
@@ -47,9 +48,9 @@ def setup_db() -> sqlite3.Connection:
     return conn
 
 
-def insert_record(conn: sqlite3.Connection, data: str, txid: str, coin: COIN, data_type: DATATYPE, extra_index: int) -> None:
+def insert_record(conn: sqlite3.Connection, data: str, txid: str, coin: COIN, data_type: DATATYPE, block_height: int, extra_index: int) -> None:
     conn.execute(
-        "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,EXTRA_INDEX) values(?,?,?,?,?)", (data, txid, coin.value, data_type.value, extra_index))
+        "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)", (data, txid, coin.value, data_type.value, block_height, extra_index))
 
 
 def get_records(conn: sqlite3.Connection, txid: str, extra_index: int) -> None:
@@ -82,9 +83,6 @@ def find_string(bytestring: bytes, min: int = 10) -> str:
     return output.decode("ascii").strip()
 
 
-# To get the blocks ordered by height, you need to provide the path of the
-# `index` directory (LevelDB index) being maintained by bitcoind. It contains
-# .ldb files and is present inside the `blocks` directory.
 blockchain = Blockchain(os.path.expanduser(
     '~/.bitcoin/regtest/blocks'))
 for block in blockchain.get_ordered_blocks(os.path.expanduser('~/.bitcoin/regtest/blocks/index'), end=1000):
@@ -94,12 +92,12 @@ for block in blockchain.get_ordered_blocks(os.path.expanduser('~/.bitcoin/regtes
         for (index, output) in enumerate(c_tx.vout):
             if detect_op_return_output(output.scriptPubKey):
                 insert_record(conn, output.scriptPubKey, tx.txid,
-                              COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_PUBKEY, index)
+                              COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_PUBKEY, block.height, index)
         for (index, input) in enumerate(c_tx.vin):
             detected_text = find_string(input.scriptSig)
             if detected_text:
                 insert_record(conn, input.scriptSig, tx.txid,
-                              COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_SIG, index)
+                              COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_SIG, block.height, index)
 
 c = conn.cursor()
 c.execute("SELECT data FROM cryptoData WHERE data_type=?",
