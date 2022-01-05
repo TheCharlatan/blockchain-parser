@@ -1,3 +1,5 @@
+import imghdr
+import magic
 import subprocess
 import os
 from blockchain_parser.blockchain import Blockchain
@@ -73,6 +75,32 @@ def detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
     return False
 
 
+def find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
+    res = imghdr.what('', script)
+    if res is not None:
+        return res
+    for op in script:
+        if type(op) is int:
+            continue
+        res = imghdr.what('', op)
+        if res is not None:
+            return res
+        res = imghdr.what('', op[1:])
+        if res is not None:
+            return res
+    return ''
+
+
+# def find_file_with_magic(script: bitcoin.core.CScript) -> None:
+#     res = magic.from_buffer(script)
+#     for op in script:
+#         if type(op) is int:
+#             continue
+#         res = magic.from_buffer(op)
+#         res = magic.from_buffer(op[1:])
+#         print(res)
+
+
 def find_string(bytestring: bytes, min: int = 10) -> str:
     cmd = "strings -n {}".format(min)
     process = subprocess.Popen(
@@ -93,6 +121,12 @@ for block in blockchain.get_ordered_blocks(os.path.expanduser('~/.bitcoin/regtes
                 insert_record(conn, output.scriptPubKey, tx.txid,
                               COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_PUBKEY, block.height, index)
         for (index, input) in enumerate(c_tx.vin):
+            detected_file = find_file_with_imghdr(input.scriptSig)
+            if len(detected_file) > 0:
+                insert_record(conn, input.scriptSig, tx.txid, COIN.BITCOIN_REGTEST,
+                              DATATYPE.SCRIPT_SIG, block.height, index)
+                continue
+
             detected_text = find_string(input.scriptSig, 4)
             if detected_text:
                 insert_record(conn, input.scriptSig, tx.txid,
@@ -105,3 +139,4 @@ results = c.fetchall()
 for result in results:
     for potential_string in result:
         print(find_string(potential_string))
+        print(find_file_with_imghdr(bitcoin.core.CScript(potential_string)))
