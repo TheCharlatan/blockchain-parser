@@ -29,6 +29,7 @@ class DATATYPE(enum.Enum):
 
 
 def setup_db() -> sqlite3.Connection:
+    """ Create a new database if one does not exist already."""
     conn = sqlite3.connect('test.db')
     c = conn.cursor()
     c.execute(
@@ -50,11 +51,13 @@ def setup_db() -> sqlite3.Connection:
 
 
 def insert_record(conn: sqlite3.Connection, data: str, txid: str, coin: COIN, data_type: DATATYPE, block_height: int, extra_index: int) -> None:
+    """Insert a new record into the database."""
     conn.execute(
         "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)", (data, txid, coin.value, data_type.value, block_height, extra_index))
 
 
 def get_records(conn: sqlite3.Connection, txid: str, extra_index: int) -> None:
+    """Print all the records in the database."""
     c = conn.cursor()
     c.execute(
         "SELECT * FROM  cryptoData WHERE txid=? AND extra_index=?", (txid,
@@ -68,6 +71,7 @@ conn = setup_db()
 
 
 def detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
+    """Return true if the script contains the OP_RETURN opcode."""
     for elem in script.raw_iter():
         for code in elem:
             if code == bitcoin.core.script.OP_RETURN:
@@ -76,13 +80,22 @@ def detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
 
 
 def find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
+    """Return a file type string a file can be detected in the script. Return an empty string otherwise."""
+    # try finding a file in the full script
     res = imghdr.what('', script)
     if res is not None:
         return res
+    # try finding a file in the full script with a padding byte removed
+    res = imghdr.what('', script[1:])
+    if res is not None:
+        return res
+
     for op in script:
+        # try finding a file in one of the script snippets
         if type(op) is int:
             continue
         res = imghdr.what('', op)
+        # try finding a file in one of the script snippets with padding removed
         if res is not None:
             return res
         res = imghdr.what('', op[1:])
@@ -102,6 +115,7 @@ def find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
 
 
 def find_string(bytestring: bytes, min: int = 10) -> str:
+    """Find and return a string with the specified minimum size."""
     cmd = "strings -n {}".format(min)
     process = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
