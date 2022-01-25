@@ -1,14 +1,12 @@
 [[source]]
 url = "https://pypi.python.org/simple"
 
-
 [packages]
 blockchain-parser = '*'
-lmdb = '*'
-monero-serialize = '*'
+monero-serialize = {path = "/home/drgrid/monero-serialize"}
 python-bitcoinlib = '*'
 python-magic = '*'
-
+lmdb = "*"
 
 [requires]
 python_version = "3.7.0"

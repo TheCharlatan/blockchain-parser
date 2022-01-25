@@ -1,6 +1,27 @@
 ## Installation instructions
 
-This project uses `pyenv` and `pipenv` to manage python version and dependencies and run commands.
+This project uses `pyenv` and `pipenv` to manage python version and
+dependencies and run commands.
+
+### Clone and build monero lmdb
+
+```
+git clone https://github.com/monero-project/monero
+cd monero/external/db_drivers/liblmdb
+make
+```
+
+The following environment variables need to be set when installing the
+project's dependencies, in particular when installing python lmdb:
+
+```
+export LMDB_FORCE_SYSTEM=1
+export LMDB_INCLUDEDIR=~/monero/external/db_drivers/liblmdb
+export LMDB_LIBDIR=~/monero/external/db_drivers/liblmdb
+```
+
+If in doubt, consult this [stackexchange
+answer](https://monero.stackexchange.com/questions/12234/python-lmdb-version-mismatch).
 
 ### Install pyenv and pipenv
 
@@ -33,6 +54,26 @@ sudo apt install pipenv
 pipenv install 
 ```
 
-### Running the 
+Monero-serialize requires local, unpublished patches. For this clone the
+repository:
+
+```
+git clone https://github.com/TheCharlatan/monero-serialize
+```
+
+And install it with:
+
+```
+pipenv install ~/monero-serialize
+```
+
+### Running the binary
+
+The monero lmdb parser requires the following path to be set to the lmdb
+libary:
+
+```
+LD_LIBRARY_PATH="/usr/local/lib:/home/drgrid/monero/external/db_drivers/liblmdb pipenv run python monero_parser.py"
+```
 
 
