@@ -2,3 +2,5 @@
 .vscode
 bitcoin
 test.db
+__pycache__
+bachelorarbeit
