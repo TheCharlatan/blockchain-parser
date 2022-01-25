@@ -1,8 +1,6 @@
-import imghdr
-import magic
-import subprocess
 import os
 from blockchain_parser.blockchain import Blockchain
+from detectors import gnu_strings, find_file_with_imghdr
 import sqlite3
 import enum
 import bitcoin.rpc
@@ -16,16 +14,20 @@ def unhexlify_str(h: str) -> bytes:
 class COIN(enum.Enum):
     """ Coin/Blockchain """
 
-    BITCOIN_MAINNET = "bitcoin mainnet"
-    BITCOIN_TESTNET3 = "bitcoin testnet3"
-    BITCOIN_REGTEST = "bitcoin regtest"
+    BITCOIN_MAINNET = "bitcoin_mainnet"
+    BITCOIN_TESTNET3 = "bitcoin_testnet3"
+    BITCOIN_REGTEST = "bitcoin_regtest"
+    MONERO_MAINNET = "monero_mainnet"
+    MONERO_STAGENET = "monero_stagnet"
+    MONERO_TESTNET = "monero_testnet"
 
 
 class DATATYPE(enum.Enum):
     """ Transaction Data Fields """
 
     SCRIPT_SIG = "scriptsig"  # input transaction data
-    SCRIPT_PUBKEY = "script pubkey"  # output transaction data
+    SCRIPT_PUBKEY = "script_pubkey"  # output transaction data
+    TX_EXTRA = "tx_extra"
 
 
 def setup_db() -> sqlite3.Connection:
@@ -79,49 +81,20 @@ def detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
     return False
 
 
-def find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
-    """Return a file type string a file can be detected in the script. Return an empty string otherwise."""
+def bitcoin_find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
     # try finding a file in the full script
-    res = imghdr.what('', script)
-    if res is not None:
+    res = find_file_with_imghdr(script)
+    if res:
         return res
-    # try finding a file in the full script with a padding byte removed
-    res = imghdr.what('', script[1:])
-    if res is not None:
-        return res
-
     for op in script:
-        # try finding a file in one of the script snippets
+        # ignore single op codes
         if type(op) is int:
             continue
-        res = imghdr.what('', op)
-        # try finding a file in one of the script snippets with padding removed
-        if res is not None:
-            return res
-        res = imghdr.what('', op[1:])
-        if res is not None:
+        # try finding a file in one of the script arguments
+        res = find_file_with_imghdr(op)
+        if res:
             return res
     return ''
-
-
-# def find_file_with_magic(script: bitcoin.core.CScript) -> None:
-#     res = magic.from_buffer(script)
-#     for op in script:
-#         if type(op) is int:
-#             continue
-#         res = magic.from_buffer(op)
-#         res = magic.from_buffer(op[1:])
-#         print(res)
-
-
-def find_string(bytestring: bytes, min: int = 10) -> str:
-    """Find and return a string with the specified minimum size."""
-    cmd = "strings -n {}".format(min)
-    process = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
-    process.stdin.write(bytestring)
-    output = process.communicate()[0]
-    return output.decode("ascii").strip()
 
 
 blockchain = Blockchain(os.path.expanduser(
@@ -141,10 +114,11 @@ for block in blockchain.get_ordered_blocks(os.path.expanduser('~/.bitcoin/regtes
                               DATATYPE.SCRIPT_SIG, block.height, index)
                 continue
 
-            detected_text = find_string(input.scriptSig, 4)
+            detected_text = gnu_strings(input.scriptSig, 4)
             if detected_text:
                 insert_record(conn, input.scriptSig, tx.txid,
                               COIN.BITCOIN_REGTEST, DATATYPE.SCRIPT_SIG, block.height, index)
+
 
 c = conn.cursor()
 c.execute("SELECT data FROM cryptoData WHERE data_type=?",
@@ -152,5 +126,6 @@ c.execute("SELECT data FROM cryptoData WHERE data_type=?",
 results = c.fetchall()
 for result in results:
     for potential_string in result:
-        print(find_string(potential_string))
-        print(find_file_with_imghdr(bitcoin.core.CScript(potential_string)))
+        print(gnu_strings(potential_string))
+        print(bitcoin_find_file_with_imghdr(
+            bitcoin.core.CScript(potential_string)))
