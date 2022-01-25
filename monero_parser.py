@@ -8,7 +8,7 @@ import binascii
 import detectors
 
 
-async def extract() -> None:
+async def extract() -> str:
     print(lmdb.version())
     # env = lmdb.Environment("/home/drgrid/.bitmonero/fake/lmdb")
     env = lmdb.open("/home/drgrid/.bitmonero/stagenet/lmdb", subdir=True,
@@ -19,11 +19,8 @@ async def extract() -> None:
     tx_db = env.open_db(
         b"txs_pruned", integerkey=True, dupsort=True, dupfixed=True)
 
-    i = 0
-
     with env.begin(write=False) as txn:
         for _, value in txn.cursor(db=index_db):
-            i += 1
             # Get the TxIndices struct from the database value
             reader = x.MemoryReaderWriter(bytearray(value))
             archiver = x.Archive(reader, False, xmr.hf_versions(9))
@@ -45,15 +42,13 @@ async def extract() -> None:
                 len(monero_tx.extra)), *monero_tx.extra)
 
             # Scan for strings in the extracted data
-            # if i % 1000 == 0:
-            #     print(i)
             detected_text = detectors.native_strings(extra_bytes, 10)
             if detected_text:
-                print(i)
                 print(detected_text, binascii.hexlify(monero_tx_indices.key))
 
     print("\n\nCompleted Monero Database parsing\n\n")
-    return
+    return "Complete"
 
 loop = asyncio.get_event_loop()
 result = loop.run_until_complete(extract())
+print(result)

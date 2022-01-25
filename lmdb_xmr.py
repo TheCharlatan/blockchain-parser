@@ -18,7 +18,7 @@ def find_string(bytestring: bytes, min: int = 10) -> str:
     return output.decode("ascii").strip()
 
 
-async def extract():
+async def extract() -> None:
     print(lmdb.version())
     # env = lmdb.Environment("/home/drgrid/.bitmonero/fake/lmdb")
     env = lmdb.open("/home/drgrid/.bitmonero/stagenet/lmdb", subdir=True,
