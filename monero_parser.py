@@ -21,10 +21,10 @@ async def extract() -> str:
 
     with env.begin(write=False) as txn:
         for _, value in txn.cursor(db=index_db):
-            # Get the TxIndices struct from the database value
+            # Get the TxIndex struct from the database value
             reader = x.MemoryReaderWriter(bytearray(value))
             archiver = x.Archive(reader, False, xmr.hf_versions(9))
-            monero_tx_indices = await archiver.message(None, xmr.TxIndices)
+            monero_tx_indices = await archiver.message(None, xmr.TxIndex)
 
             # Convert the extracted database transaction id back to bytes
             writer = x.MemoryReaderWriter()
