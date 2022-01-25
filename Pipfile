@@ -1,0 +1,14 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+
+
+[packages]
+blockchain-parser = '*'
+lmdb = '*'
+monero-serialize = '*'
+python-bitcoinlib = '*'
+python-magic = '*'
+
+
+[requires]
+python_version = "3.7.0"
