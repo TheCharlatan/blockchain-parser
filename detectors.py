@@ -2,6 +2,7 @@ import string
 import subprocess
 import magic
 import imghdr
+import bitcoin.rpc
 
 
 def gnu_strings(bytestring: bytes, min: int = 10) -> str:
@@ -47,3 +48,28 @@ def native_strings(bytestring: bytes, min: int = 10) -> str:
     if len(result) >= min:  # catch result at EOF
         return result
     return ""
+
+
+def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
+    """Return true if the script contains the OP_RETURN opcode."""
+    for elem in script.raw_iter():
+        for code in elem:
+            if code == bitcoin.core.script.OP_RETURN:
+                return True
+    return False
+
+
+def bitcoin_find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
+    # try finding a file in the full script
+    res = find_file_with_imghdr(script)
+    if res:
+        return res
+    for op in script:
+        # ignore single op codes
+        if type(op) is int:
+            continue
+        # try finding a file in one of the script arguments
+        res = find_file_with_imghdr(op)
+        if res:
+            return res
+    return ''
