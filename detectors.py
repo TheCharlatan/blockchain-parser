@@ -15,14 +15,17 @@ def gnu_strings(bytestring: bytes, min: int = 10) -> str:
     return output.decode("ascii").strip()
 
 
-def find_file_with_magic(bytestring: bytes) -> None:
+def find_file_with_magic(bytestring: bytes) -> str:
     res = magic.from_buffer(bytestring)
     for op in bytestring:
         if type(op) is int:
             continue
         res = magic.from_buffer(op)
         res = magic.from_buffer(op[1:])
-        print(res)
+        if res:
+            return res
+
+    return ''
 
 
 def find_file_with_imghdr(bytestring: bytes) -> str:
@@ -50,13 +53,13 @@ def native_strings(bytestring: bytes, min: int = 10) -> str:
     return ""
 
 
-def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> bool:
+def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
     """Return true if the script contains the OP_RETURN opcode."""
     for elem in script.raw_iter():
         for code in elem:
             if code == bitcoin.core.script.OP_RETURN:
-                return True
-    return False
+                return 'OP_RETURN'
+    return ''
 
 
 def bitcoin_find_file_with_imghdr(script: bitcoin.core.CScript) -> str:

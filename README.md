@@ -68,13 +68,17 @@ And install it with:
 pipenv install ~/monero-serialize
 ```
 
-### Running the binary
+## Running the binary
 
 The monero lmdb parser requires the following path to be set to the lmdb
 libary:
 
 ```
-LD_LIBRARY_PATH="/usr/local/lib:/home/drgrid/monero/external/db_drivers/liblmdb pipenv run python monero_parser.py"
+LD_LIBRARY_PATH="/usr/local/lib:/home/drgrid/monero/external/db_drivers/liblmdb pipenv run python main.py --help"
 ```
+
+The help text should self-describe the usage of the parsers. Currently the
+parsers read data directly from the fullnode database.
+
 
 

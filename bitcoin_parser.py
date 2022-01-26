@@ -1,4 +1,3 @@
-from dbm import _Database
 from blockchain_parser.blockchain import Blockchain
 from database import COIN, DATATYPE, Database
 import detectors

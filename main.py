@@ -1,11 +1,9 @@
-import os
-from blockchain_parser.blockchain import Blockchain
 from bitcoin_parser import BitcoinParser
 from database import COIN, DATATYPE, Database
 import detectors
-import enum
 import bitcoin.rpc
 import binascii
+import argparse
 
 from monero_parser import MoneroParser
 
@@ -15,10 +13,23 @@ def unhexlify_str(h: str) -> bytes:
 
 
 if __name__ == '__main__':
-    monero_parser = MoneroParser("/home/drgrid/.bitmonero/stagenet/lmdb")
+    """Main function"""
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Tool for parsing and analysing various blockchain data")
+    parser.add_argument("-m",  "--monero-database",
+                        default="/home/drgrid/.bitmonero/stagenet/lmdb", help="path to the monero block files")
+    parser.add_argument("-b", "--bitcoin-database",
+                        default="~/.bitcoin/regtest/blocks", help="path to the bitcoin block files")
+    parser.add_argument("-d", "--database", default="test.db",
+                        help="name of the database used to store results")
+
+    args = parser.parse_args()
+
+    monero_parser = MoneroParser(args.monero_database)
     bitcoin_parser = BitcoinParser(
-        "~/.bitcoin/regtest/blocks", COIN.BITCOIN_REGTEST)
-    database = Database("test.db")
+        args.bitcoin_database, COIN.BITCOIN_REGTEST)
+    database = Database(args.database)
 
     results = database.get_data(DATATYPE.SCRIPT_SIG)
     for result in results:
