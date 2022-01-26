@@ -68,7 +68,7 @@ And install it with:
 pipenv install ~/monero-serialize
 ```
 
-## Running the binary
+## Running the script
 
 The monero lmdb parser requires the following path to be set to the lmdb
 libary:
