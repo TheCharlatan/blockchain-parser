@@ -41,7 +41,7 @@ curl https://pyenv.run | bash
 ```
 
 Read the manual [here](https://github.com/pyenv/pyenv#basic-github-checkout) on
-how to configure the correct shell path and environment.
+how to configure the correct environment variables for pyenv.
 
 Install pipenv:
 
