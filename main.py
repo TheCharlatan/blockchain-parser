@@ -20,18 +20,26 @@ if __name__ == '__main__':
     parser.add_argument("-m",  "--monero-database",
                         default="/home/drgrid/.bitmonero/stagenet/lmdb", help="path to the monero block files")
     parser.add_argument("-b", "--bitcoin-database",
-                        default="~/.bitcoin/testnet3/blocks", help="path to the bitcoin block files")
+                        default="/home/drgrid/.bitcoin/testnet3", help="path to the bitcoin block files")
     parser.add_argument("-d", "--database", default="test.db",
                         help="name of the database used to store results")
 
+    # Parse the command line arguments
     args = parser.parse_args()
 
-    # monero_parser = MoneroParser(args.monero_database)
+    # Create Bitcoin and Monero parsers
+    monero_parser = MoneroParser(args.monero_database, COIN.MONERO_STAGENET)
     bitcoin_parser = BitcoinParser(
         args.bitcoin_database, COIN.BITCOIN_REGTEST)
-    database = Database(args.database)
-    bitcoin_parser.parse_blockchain_test()
 
+    # Create a database handler
+    database = Database(args.database)
+
+    # Parse the blockchains
+    bitcoin_parser.parse_blockchain(database)
+    monero_parser.parse_blockchain(database)
+
+    # Retrieve and prine some results
     results = database.get_data(DATATYPE.SCRIPT_SIG)
     for result in results:
         for potential_string in result:

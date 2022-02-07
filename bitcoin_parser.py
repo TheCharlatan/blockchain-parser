@@ -271,15 +271,20 @@ class BitcoinParser(CoinParser):
         self.blockchain_path = blockchain_path
         self.coin = coin
 
-    def parse_blockchain_test(self, database: Optional[Database]):
-        blockchain = Blockchain(os.path.expanduser(self.blockchain_path))
+    def parse_blockchain(self, database: Optional[Database]):
+        """ Parse the blockchain with the previously constructed options
+        :param database: Database to be written into.
+        :type database: Database
+        """
+
+        blockchain = Blockchain(os.path.expanduser(self.blockchain_path + '/blocks'))
         height = 0
         total_txs = 0
         ignored_tx_inputs = 0
         tx_inputs = 0
         ignored_tx_outputs = 0
         tx_outputs = 0
-        for block in blockchain.get_ordered_blocks(os.path.expanduser(self.blockchain_path + '/index'), end=2100000):
+        for block in blockchain.get_ordered_blocks(os.path.expanduser(self.blockchain_path + '/blocks/index'), end=2100000):
             height += 1
             for (tx_index, tx) in enumerate(block.transactions):
                 total_txs += 1
@@ -307,8 +312,9 @@ class BitcoinParser(CoinParser):
                         ignored_tx_inputs += 1
                         continue
 
-                    database.insert_record(input.scriptSig, tx.txid, self.coin,
-                        DATATYPE.SCRIPT_SIG, block.height, input_index)
+                    if database is not None:
+                        database.insert_record(input.scriptSig, tx.txid, self.coin,
+                            DATATYPE.SCRIPT_SIG, block.height, input_index)
 
                 for (output_index, output) in enumerate(c_tx.vout):
                     tx_outputs += 1
@@ -328,10 +334,14 @@ class BitcoinParser(CoinParser):
                         # print("output is p2ms, ignoring")
                         ignored_tx_outputs += 1
                         continue
-                    print("nonstandard output:", output)
 
+                    # print("nonstandard output:", output)
+
+                    if database is not None:
                         database.insert_record(output.scriptPubKey, tx.txid,
                             self.coin, DATATYPE.SCRIPT_PUBKEY, block.height, index)
-
+        
         print(height, tx_index, input_index, total_txs, tx_inputs, ignored_tx_inputs, len(input.scriptSig), input.scriptSig)
         print(height, tx_outputs, ignored_tx_outputs)
+
+        parse_ldb(database, coin=self.coin, btc_dir=self.blockchain_path)

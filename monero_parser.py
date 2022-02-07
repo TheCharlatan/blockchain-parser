@@ -1,4 +1,5 @@
 from typing import Callable, Optional
+from database import COIN, DATATYPE, Database
 import lmdb
 from monero_serialize import xmrserialize as x
 from monero_serialize import xmrtypes as xmr
@@ -51,6 +52,7 @@ async def serialize_uint64(number: int) -> bytearray:
     db_tx_index = bytearray(writer.get_buffer())
     return db_tx_index
 
+
 def is_default_extra(extra: bytes) -> bool:
     """ Checks if the tx_extra follows the standard format of:
             0x01 <pubkey> 0x02 0x09 0x01 <encrypted_payment_id>
@@ -67,10 +69,9 @@ def is_default_extra(extra: bytes) -> bool:
     return False
 
 
-
 class MoneroParser(CoinParser):
 
-    def __init__(self, blockchain_path: str) -> None:
+    def __init__(self, blockchain_path: str, coin: COIN) -> None:
         """
         :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero/stagenet/lmdb).
         :type blockchain_path: str
@@ -79,8 +80,14 @@ class MoneroParser(CoinParser):
         """
 
         self.blockchain_path = blockchain_path
+        self.coin = coin
 
-    def parse_blockchain(filter: Callable[[bytes, Optional[int]], str]):
+    def parse_blockchain(self, database: Optional[Database]):
+        """ Parse the blockchain with the previously constructed options
+        :param database: Database to be written into.
+        :type database: Database
+        """
+
         print(lmdb.version())
         env = lmdb.open("/home/drgrid/.bitmonero/stagenet/lmdb", subdir=True,
                         lock=False, readonly=True, max_dbs=10)
@@ -111,11 +118,18 @@ class MoneroParser(CoinParser):
                 extra_bytes = struct.pack("{}B".format(
                     len(monero_tx.extra)), *monero_tx.extra)
 
-                # Scan for strings in the extracted data to reduce data retained on disk
-                detected_text = filter(extra_bytes, 10)
-                if detected_text:
-                    print(detected_text, binascii.hexlify(
-                        monero_tx_index.key))
+                # Ignore extra bytes that are in the default format - they are unlikely to contain data
+                if is_default_extra(extra_bytes):
+                    continue
+
+                if database is not None:
+                    database.insert_record(extra_bytes, value.key,
+                        self.coin, DATATYPE.TX_EXTRA, data.block_id, 0)
+                else:
+                    # Scan for strings in the extracted data to reduce data retained on disk
+                    detected_text = detectors.gnu_strings(extra_bytes, 10)
+                    if detected_text:
+                        print(detected_text, binascii.hexlify(
+                            monero_tx_index.key))
 
             print("\n\nCompleted Monero Database parsing\n\n")
-            return "Complete"
