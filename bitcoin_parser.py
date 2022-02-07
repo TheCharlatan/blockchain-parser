@@ -26,8 +26,14 @@ opcode_counters = {
 }
 
 def is_DER_sig(sig: bytes) -> bool:
-    # Checks if the data is a DER encoded ECDSA signature
-    # https://bitcoin.stackexchange.com/questions/92680/what-are-the-der-signature-and-sec-format
+    """ Checks if the data is a DER encoded ECDSA signature
+        https://bitcoin.stackexchange.com/questions/92680/what-are-the-der-signature-and-sec-format
+    :param sig: Potential signature.
+    :type sig: bytes
+    :return: True if the passed in bytes are an ECDSA signature in DER format.
+    :rtype: bool
+    """
+
     # Header byte
     if sig[0] != 0x30:
         return False
@@ -47,6 +53,14 @@ def is_DER_sig(sig: bytes) -> bool:
     return True
 
 def is_pubkey(pubkey: bytes) -> bool:
+    """ Checks if the data is a SEC serialized ECDSA public key
+            https://bitcoin.stackexchange.com/questions/92680/what-are-the-der-signature-and-sec-format
+    :param pubkey: Potential public key.
+    :type pubkey: bytes
+    :return: True if the passed in bytes are an ECDSA public key in SEC format.
+    :rtype: bool
+    """
+
     if pubkey[0] == 0x02 or pubkey[0] == 0x03:
         return len(pubkey) == 33
     if pubkey[0] == 0x04:
@@ -54,6 +68,14 @@ def is_pubkey(pubkey: bytes) -> bool:
     return False
 
 def is_pubkeys(pubkeys: bytes, number_of_keys: int) -> bool:
+    """ Checks if the data are multiple SEC serialized ECDSA public keys
+            https://bitcoin.stackexchange.com/questions/92680/what-are-the-der-signature-and-sec-format
+    :param pubkeys: Potential public keys.
+    :type pubkey: bytes
+    :return: True if the passed in bytes are multiple serialized ECDSA public keys in SEC format.
+    :rtype: bool
+    """
+
     if len(pubkeys) < 33:
         return False
     pos = 0
@@ -67,10 +89,14 @@ def is_pubkeys(pubkeys: bytes, number_of_keys: int) -> bool:
     return True
 
 def is_p2pk_scriptsig(script: bitcoin.core.script.CScript) -> bool:
-    """
-        checks if the input script of the form:
+    """ Checks if the input script of the form:
             <sig>
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2pk input script.
+    :rtype: bool
     """
+
     if len(script) < 64:
         return False
     is_p2pk = False
@@ -88,10 +114,14 @@ def is_p2pk_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return  is_p2pk
 
 def is_p2pkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
-    """
-        checks if the input script of the form:
+    """ Checks if the input script of the form:
             <sig> <pubkey>
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2pkh input script.
+    :rtype: bool
     """
+
     # checks if the input script is 
     if len(script) < 96:
         return False
@@ -111,10 +141,14 @@ def is_p2pkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return True
 
 def is_p2sh_p2ms_scriptsig(script: bitcoin.core.script.CScript) -> bool:
-    """ 
-        checks if the input script of the form: 
+    """ Checks if the input script of the form: 
             OP_0 <sigs> OP_N <pubkeys> OP_N OP_CHECKMULTISIG 
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2sh(p2ms) input script.
+    :rtype: bool
     """
+
     # P2SH inputs always start with OP_0
     if len(script) < 96:
         return False
@@ -142,10 +176,14 @@ def is_p2sh_p2ms_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return True
 
 def is_p2sh_p2wpkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
-    """
-        checks if the input script of the form:
+    """ Checks if the input script of the form:
             OP_O <hash>
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2sh(p2wpkh) input script.
+    :rtype: bool
     """
+
     if len(script) != 23:
         return False
     if not script[1] == 0x00:
@@ -153,10 +191,14 @@ def is_p2sh_p2wpkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return True
 
 def is_p2pkh_output(script: bitcoin.core.script.CScript) -> bool:
-    """
-        checks if the output script is of the form:
+    """ Checks if the output script is of the form:
             OP_DUP OP_HASH160 <hash> OP_EQUALVERIFY OP_CHECKSIG
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2pkh output script.
+    :rtype: bool
     """
+
     if len(script) != 25:
         return False
     return (
@@ -167,10 +209,14 @@ def is_p2pkh_output(script: bitcoin.core.script.CScript) -> bool:
     )
 
 def is_p2pk_output(script: bitcoin.core.script.CScript) -> bool:
-    """
-        checks if the output script is of the form:
+    """ Checks if the output script is of the form:
             <pubkey> OP_CHECKSIG
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2pk output script.
+    :rtype: bool
     """
+
     if len(script) < 33:
         return False
     return (
@@ -178,10 +224,14 @@ def is_p2pk_output(script: bitcoin.core.script.CScript) -> bool:
     )
 
 def is_p2sh_output(script: bitcoin.core.script.CScript) -> bool:
-    """
-        checks if the output script is of the form:
+    """ Checks if the output script is of the form:
             OP_HASH160 <hash> OP_EQUAL
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2sh output script.
+    :rtype: bool
     """
+
     if len(script) != 23:
         return False
     return (
@@ -189,10 +239,14 @@ def is_p2sh_output(script: bitcoin.core.script.CScript) -> bool:
     )
 
 def is_p2ms_output(script: bitcoin.core.script.CScript) -> bool:
-    """
-        checks if the output script is of the form:
+    """ Checks if the output script is of the form:
             OP_N <pubkeys> OP_N OP_CHECKMULTISIG
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CSCript
+    :return: True if the passed in bitcoin CScript is a p2ms output script.
+    :rtype: bool
     """
+
     if len(script) < 33:
         return False
     if script[0] not in opcode_counters.keys():
@@ -207,13 +261,17 @@ def is_p2ms_output(script: bitcoin.core.script.CScript) -> bool:
         
 class BitcoinParser(CoinParser):
     def __init__(self, blockchain_path: str, coin: COIN):
+        """
+        :param blockchain_path: Path to the Bitcoin blockchain (e.g. /home/user/.bitcoin/).
+        :type blockchain_path: str
+        :param coin: One of the Bitcoin compatible coins.
+        :type coin: COIN
+        """
+
         self.blockchain_path = blockchain_path
         self.coin = coin
 
-    def pre_filter(self, c_tx): 
-        print(c_tx)
-    
-    def parse_blockchain_test(self):
+    def parse_blockchain_test(self, database: Optional[Database]):
         blockchain = Blockchain(os.path.expanduser(self.blockchain_path))
         height = 0
         total_txs = 0
@@ -248,7 +306,10 @@ class BitcoinParser(CoinParser):
                         # print("input is p2sh(p2wpkh), ignoring")
                         ignored_tx_inputs += 1
                         continue
-                
+
+                    database.insert_record(input.scriptSig, tx.txid, self.coin,
+                        DATATYPE.SCRIPT_SIG, block.height, input_index)
+
                 for (output_index, output) in enumerate(c_tx.vout):
                     tx_outputs += 1
                     if is_p2pkh_output(output.scriptPubKey):
@@ -269,42 +330,8 @@ class BitcoinParser(CoinParser):
                         continue
                     print("nonstandard output:", output)
 
+                        database.insert_record(output.scriptPubKey, tx.txid,
+                            self.coin, DATATYPE.SCRIPT_PUBKEY, block.height, index)
+
         print(height, tx_index, input_index, total_txs, tx_inputs, ignored_tx_inputs, len(input.scriptSig), input.scriptSig)
         print(height, tx_outputs, ignored_tx_outputs)
-
-
-        #    if height == 100000:
-        #        print(height, tx_index, input_index, total_txs, tx_inputs, ignored_tx_inputs, len(input.scriptSig), input.scriptSig)
-        #        print(height, tx_outputs, ignored_tx_outputs)
-
-        #        return
-
-
-    def parse_blockchain(self, filter: Callable[[bytes, Optional[int]], str], database: Optional[Database]):
-
-        blockchain = Blockchain(os.path.expanduser(
-            self.blockchain_path))
-        for block in blockchain.get_ordered_blocks(os.path.expanduser(self.blockchain_path + '/index'), end=1000):
-            for tx in block.transactions:
-                c_tx = bitcoin.core.CTransaction.deserialize(tx.hex)
-                # do some simple OP_RETURN detection
-                for (index, output) in enumerate(c_tx.vout):
-                    if detectors.bitcoin_detect_op_return_output(output.scriptPubKey):
-                        if database:
-                            database.insert_record(output.scriptPubKey, tx.txid,
-                                                   self.coin, DATATYPE.SCRIPT_PUBKEY, block.height, index)
-
-                for (index, input) in enumerate(c_tx.vin):
-                    detected_file = detectors.bitcoin_find_file_with_imghdr(
-                        input.scriptSig)
-                    if len(detected_file) > 0:
-                        if database:
-                            database.insert_record(input.scriptSig, tx.txid, self.coin,
-                                                   DATATYPE.SCRIPT_SIG, block.height, index)
-                        continue
-
-                    detected_text = detectors.gnu_strings(input.scriptSig, 4)
-                    if detected_text:
-                        if database:
-                            database.insert_record(input.scriptSig, tx.txid,
-                                                   self.coin, DATATYPE.SCRIPT_SIG, block.height, index)

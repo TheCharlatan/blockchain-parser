@@ -6,5 +6,5 @@ from database import Database
 
 class CoinParser(ABC):
     @abstractmethod
-    def parse_blockchain(self, filter: Callable[[bytes, Optional[int]], str], database: Optional[Database]):
+    def parse_blockchain(self, database: Optional[Database]):
         pass

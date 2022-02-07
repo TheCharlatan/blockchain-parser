@@ -11,6 +11,13 @@ from parser import CoinParser
 
 
 async def deserialize_tx_index(tx_index_raw: bytes) -> xmr.TxIndex:
+    """ Deserialize raw bytes retrieved from the tx_indices LMDB table
+    :param tx_index_raw: Raw tx_indeces bytes.
+    :type tx_index_raw: bytes
+    :return: The de-serialized TxIndex
+    :rtype: monero_serialize.xmrtypes.TxIndex
+    """
+
     reader = x.MemoryReaderWriter(bytearray(tx_index_raw))
     archiver = x.Archive(reader, False, xmr.hf_versions(9))
     monero_tx_indices = await archiver.message(None, xmr.TxIndex)
@@ -18,6 +25,13 @@ async def deserialize_tx_index(tx_index_raw: bytes) -> xmr.TxIndex:
 
 
 async def deserialize_transaction(monero_tx_raw: bytes) -> xmr.TransactionPrefix:
+    """ Deserialize raw bytes retrieved from the txs_pruned LMDB table
+    :param monero_tx_raw: Raw txs_pruned bytes.
+    :type monero_tx_raw: bytes
+    :return: The de-serialized TransactionPrefix
+    :rtype: monero_serialize.xmrtypes.TransactionPrefix
+    """
+
     reader = x.MemoryReaderWriter(bytearray(monero_tx_raw))
     archiver = x.Archive(reader, False, xmr.hf_versions(9))
     monero_tx = await archiver.message(None, xmr.TransactionPrefix)
@@ -25,15 +39,45 @@ async def deserialize_transaction(monero_tx_raw: bytes) -> xmr.TransactionPrefix
 
 
 async def serialize_uint64(number: int) -> bytearray:
+    """ Serialize a number to a uint64 in byte representation
+    :param number: Number to be serialized.
+    :type number: int
+    :return: The serialized number in bytes
+    :rtype: bytearray
+    """
+
     writer = x.MemoryReaderWriter()
     await monero_core.int_serialize.dump_uint(writer, number, 8)
     db_tx_index = bytearray(writer.get_buffer())
     return db_tx_index
 
+def is_default_extra(extra: bytes) -> bool:
+    """ Checks if the tx_extra follows the standard format of:
+            0x01 <pubkey> 0x02 0x09 0x01 <encrypted_payment_id>
+    :param extra: Potential default extra bytes.
+    :type extra: bytes
+    :return: True if the passed in bytes are in the default tx_extra format
+    :rtype: bool
+    """
+
+    if len(extra) != 1 + 32 + 1 + 1 + 1 + 8:
+        return False
+    if extra[0] == 0x01 and extra[33] == 0x02 and extra[34] == 0x09 and extra[35] == 0x01:
+        return True
+    return False
+
+
 
 class MoneroParser(CoinParser):
 
     def __init__(self, blockchain_path: str) -> None:
+        """
+        :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero/stagenet/lmdb).
+        :type blockchain_path: str
+        :param coin: One of the Monero compatible coins.
+        :type coin: COIN
+        """
+
         self.blockchain_path = blockchain_path
 
     def parse_blockchain(filter: Callable[[bytes, Optional[int]], str]):
