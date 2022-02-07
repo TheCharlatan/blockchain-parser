@@ -258,6 +258,47 @@ def is_p2ms_output(script: bitcoin.core.script.CScript) -> bool:
         return False
     return script[-1] == bitcoin.core.script.OP_CHECKMULTISIG
 
+def is_p2wpkh_output(script: bitcoin.core.script.CScript) -> bool:
+    """ Checks if the output script if of the form:
+            OP_0 <pubkey hash>
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2wpkh output script.
+    :rtype: bool
+    """
+
+    if len(script) != 22:
+        return False
+    return script[0] == OP_0
+
+def is_p2wsh_output(script: bitcoin.core.script.CSCript) -> bool:
+    """ Checks if the output script if of the form:
+            OP_0 <script hash>
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2wsh output script.
+    :rtype: bool
+    """
+
+    if len(script) != 34:
+        return False
+    return script[0] == OP_0
+
+def is_p2tr_output(script: bitcoin.core.script.CSCript) -> bool:
+    """ Checks if the output script if of the form:
+            OP_1 <x only pubkey>
+    :param script: Script to be analyzed.
+    :type script: bitcoin.core.script.CScript
+    :return: True if the passed in bitcoin CScript is a p2wtr output script.
+    :rtype: bool
+    """
+
+    if len(script) != 34:
+        return False
+    return script[0] == OP_1
+
+
+
         
 class BitcoinParser(CoinParser):
     def __init__(self, blockchain_path: str, coin: COIN):
@@ -332,6 +373,18 @@ class BitcoinParser(CoinParser):
                         continue
                     if is_p2ms_output(output.scriptPubKey):
                         # print("output is p2ms, ignoring")
+                        ignored_tx_outputs += 1
+                        continue
+                    if is_p2wpkh_output(output.scriptPubKey):
+                        # print("output is p2wpkh, ignoring")
+                        ignored_tx_outputs += 1
+                        continue
+                    if is_p2wsh_output(output.scriptPubKey):
+                        # print("output is p2wsh, ignoring")
+                        ignored_tx_outputs += 1
+                        continue
+                    if is_p2tr_output(output.scriptPubKey):
+                        # print("output is p2tr, ignoring")
                         ignored_tx_outputs += 1
                         continue
 
