@@ -1,8 +1,10 @@
 ## Installation instructions
 
 This project uses `pyenv` and `pipenv` for managing the python version,
-dependencies and even running commands. The recommendation of using these two
-tools in combination is from [this blog post](https://gioele.io/pyenv-pipenv).
+dependencies and even running commands. Python packaging has always been a huge
+mess and I hate pretty much everything about it. The recommendation of using
+these two tools in combination is from [this blog
+post](https://gioele.io/pyenv-pipenv).
 
 ### Clone and build monero lmdb
 
