@@ -82,4 +82,12 @@ The help text should self-describe the usage of the parsers. Currently the
 parsers read data directly from the fullnode database.
 
 
+### IDE integration
+
+The python path that pipenv is configured to after installation is made
+available with:
+
+```
+pipenv --py
+```
 

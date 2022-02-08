@@ -245,4 +245,4 @@ def parse_ldb(database: Optional[Database], coin=COIN.BITCOIN_MAINNET, btc_dir="
 
     db.close()
 
-parse_ldb(None)
+# parse_ldb(None)

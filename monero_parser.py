@@ -124,7 +124,7 @@ class MoneroParser(CoinParser):
 
                 if database is not None:
                     database.insert_record(extra_bytes, value.key,
-                        self.coin, DATATYPE.TX_EXTRA, data.block_id, 0)
+                        self.coin, DATATYPE.TX_EXTRA, monero_tx_index.data.block_id, 0)
                 else:
                     # Scan for strings in the extracted data to reduce data retained on disk
                     detected_text = detectors.gnu_strings(extra_bytes, 10)

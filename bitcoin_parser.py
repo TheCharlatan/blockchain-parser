@@ -1,10 +1,10 @@
 from blockchain_parser.blockchain import Blockchain
 from database import COIN, DATATYPE, Database
-import detectors
 from parser import CoinParser
 import bitcoin.rpc
-from typing import Callable, Optional
+from typing import Optional
 import os
+from utxo_scan import parse_ldb
 
 opcode_counters = {
     bitcoin.core.script.OP_1: 1, 
@@ -269,7 +269,7 @@ def is_p2wpkh_output(script: bitcoin.core.script.CScript) -> bool:
 
     if len(script) != 22:
         return False
-    return script[0] == OP_0
+    return script[0] == bitcoin.core.script.OP_0
 
 def is_p2wsh_output(script: bitcoin.core.script.CSCript) -> bool:
     """ Checks if the output script if of the form:
@@ -282,7 +282,7 @@ def is_p2wsh_output(script: bitcoin.core.script.CSCript) -> bool:
 
     if len(script) != 34:
         return False
-    return script[0] == OP_0
+    return script[0] == bitcoin.core.script.OP_0
 
 def is_p2tr_output(script: bitcoin.core.script.CSCript) -> bool:
     """ Checks if the output script if of the form:
@@ -295,9 +295,7 @@ def is_p2tr_output(script: bitcoin.core.script.CSCript) -> bool:
 
     if len(script) != 34:
         return False
-    return script[0] == OP_1
-
-
+    return script[0] == bitcoin.core.script.OP_1
 
         
 class BitcoinParser(CoinParser):
@@ -392,7 +390,7 @@ class BitcoinParser(CoinParser):
 
                     if database is not None:
                         database.insert_record(output.scriptPubKey, tx.txid,
-                            self.coin, DATATYPE.SCRIPT_PUBKEY, block.height, index)
+                            self.coin, DATATYPE.SCRIPT_PUBKEY, block.height, output_index)
         
         print(height, tx_index, input_index, total_txs, tx_inputs, ignored_tx_inputs, len(input.scriptSig), input.scriptSig)
         print(height, tx_outputs, ignored_tx_outputs)
