@@ -9,28 +9,40 @@ from monero_parser import MoneroParser
 
 
 def unhexlify_str(h: str) -> bytes:
-    return binascii.unhexlify(h.encode('ascii'))
+    return binascii.unhexlify(h.encode("ascii"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """Main function"""
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Tool for parsing and analysing various blockchain data")
-    parser.add_argument("-m",  "--monero-database",
-                        default="/home/drgrid/.bitmonero/stagenet/lmdb", help="path to the monero block files")
-    parser.add_argument("-b", "--bitcoin-database",
-                        default="/home/drgrid/.bitcoin/testnet3", help="path to the bitcoin block files")
-    parser.add_argument("-d", "--database", default="test.db",
-                        help="name of the database used to store results")
+        description="Tool for parsing and analysing various blockchain data",
+    )
+    parser.add_argument(
+        "-m",
+        "--monero-database",
+        default="/home/drgrid/.bitmonero/stagenet/lmdb",
+        help="path to the monero block files",
+    )
+    parser.add_argument(
+        "-b",
+        "--bitcoin-database",
+        default="/home/drgrid/.bitcoin/testnet3",
+        help="path to the bitcoin block files",
+    )
+    parser.add_argument(
+        "-d",
+        "--database",
+        default="test.db",
+        help="name of the database used to store results",
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()
 
     # Create Bitcoin and Monero parsers
     monero_parser = MoneroParser(args.monero_database, COIN.MONERO_STAGENET)
-    bitcoin_parser = BitcoinParser(
-        args.bitcoin_database, COIN.BITCOIN_REGTEST)
+    bitcoin_parser = BitcoinParser(args.bitcoin_database, COIN.BITCOIN_REGTEST)
 
     # Create a database handler
     database = Database(args.database)
@@ -44,5 +56,8 @@ if __name__ == '__main__':
     for result in results:
         for potential_string in result:
             print(detectors.gnu_strings(potential_string))
-            print(detectors.bitcoin_find_file_with_imghdr(
-                bitcoin.core.CScript(potential_string)))
+            print(
+                detectors.bitcoin_find_file_with_imghdr(
+                    bitcoin.core.CScript(potential_string)
+                )
+            )

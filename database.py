@@ -4,7 +4,7 @@ from typing import List
 
 
 class COIN(enum.Enum):
-    """ Coin/Blockchain """
+    """Coin/Blockchain"""
 
     BITCOIN_MAINNET = "bitcoin_mainnet"
     BITCOIN_TESTNET3 = "bitcoin_testnet3"
@@ -15,7 +15,7 @@ class COIN(enum.Enum):
 
 
 class DATATYPE(enum.Enum):
-    """ Transaction Data Fields """
+    """Transaction Data Fields"""
 
     SCRIPT_SIG = "scriptsig"  # input transaction data
     SCRIPT_PUBKEY = "script_pubkey"  # output transaction data
@@ -23,7 +23,7 @@ class DATATYPE(enum.Enum):
 
 
 class LABEL(enum.Enum):
-    """ Default Data labels """
+    """Default Data labels"""
 
     OP_RETURN = "opreturn"
     TEXT = "text"
@@ -36,9 +36,11 @@ class Database:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
         c.execute(
-            ''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='cryptoData' ''')
+            """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='cryptoData' """
+        )
         if not c.fetchone()[0] == 1:
-            c.execute('''CREATE TABLE cryptoData(
+            c.execute(
+                """CREATE TABLE cryptoData(
                 DATA TEXT NOT NULL,
                 TXID CHAR(64) NOT NULL,
                 COIN TEXT NOT NULL,
@@ -47,18 +49,29 @@ class Database:
                 EXTRA_INDEX INTEGER,
                 PRIMARY KEY (TXID, EXTRA_INDEX, DATA_TYPE),
                 UNIQUE(TXID, EXTRA_INDEX, DATA_TYPE)
-            );''')
+            );"""
+            )
 
             print("Table successfully created")
 
         conn.commit()
         conn.close()
 
-    def insert_record(self, data: str, txid: str, coin: COIN, data_type: DATATYPE, block_height: int, extra_index: int) -> None:
+    def insert_record(
+        self,
+        data: str,
+        txid: str,
+        coin: COIN,
+        data_type: DATATYPE,
+        block_height: int,
+        extra_index: int,
+    ) -> None:
         conn = sqlite3.connect(self.name)
         """Insert a new record into the database."""
         conn.execute(
-            "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)", (data, txid, coin.value, data_type.value, block_height, extra_index))
+            "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
+            (data, txid, coin.value, data_type.value, block_height, extra_index),
+        )
         conn.commit()
         conn.close()
 
@@ -67,8 +80,8 @@ class Database:
         """Print all the records in the database."""
         c = self.conn.cursor()
         c.execute(
-            "SELECT * FROM  cryptoData WHERE txid=? AND extra_index=?", (txid,
-                                                                         extra_index)
+            "SELECT * FROM  cryptoData WHERE txid=? AND extra_index=?",
+            (txid, extra_index),
         )
         result = c.fetchall()
         conn.commit()
@@ -78,7 +91,6 @@ class Database:
     def get_data(self, data_type: DATATYPE) -> List[bytes]:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
-        c.execute("SELECT data FROM cryptoData WHERE data_type=?",
-                  (data_type.value, ))
+        c.execute("SELECT data FROM cryptoData WHERE data_type=?", (data_type.value,))
         results = c.fetchall()
         return results

@@ -11,3 +11,9 @@ plyvel = "*"
 
 [requires]
 python_version = "3.7.0"
+
+[dev-packages]
+black = "*"
+
+[pipenv]
+allow_prereleases = true

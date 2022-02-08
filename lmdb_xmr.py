@@ -12,7 +12,12 @@ def find_string(bytestring: bytes, min: int = 10) -> str:
     """Find and return a string with the specified minimum size."""
     cmd = "strings -n {}".format(min)
     process = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+        cmd,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
+    )
     process.stdin.write(bytestring)
     output = process.communicate()[0]
     return output.decode("ascii").strip()
@@ -21,10 +26,16 @@ def find_string(bytestring: bytes, min: int = 10) -> str:
 async def extract() -> None:
     print(lmdb.version())
     # env = lmdb.Environment("/home/drgrid/.bitmonero/fake/lmdb")
-    env = lmdb.open("/home/drgrid/.bitmonero/stagenet/lmdb", subdir=True,
-                    lock=False, readonly=True, max_dbs=10)
+    env = lmdb.open(
+        "/home/drgrid/.bitmonero/stagenet/lmdb",
+        subdir=True,
+        lock=False,
+        readonly=True,
+        max_dbs=10,
+    )
     block_heights_db = env.open_db(
-        b"block_heights", integerkey=True, dupsort=True, dupfixed=True)
+        b"block_heights", integerkey=True, dupsort=True, dupfixed=True
+    )
     # with env.begin(db=block_heights_db) as txn:
     #     print(env)
     #     res = txn.get(key=b'\x00\x00\x00\x00\x00\x00\x00\x00')
@@ -35,8 +46,7 @@ async def extract() -> None:
     #     for key, value in cursor:
     #         print(key, value)
 
-    index_db = env.open_db(
-        b"tx_indices", integerkey=True, dupsort=True, dupfixed=True)
+    index_db = env.open_db(b"tx_indices", integerkey=True, dupsort=True, dupfixed=True)
     txids = {}
 
     with env.begin(db=index_db) as txn:
@@ -68,8 +78,7 @@ async def extract() -> None:
         print("1st entry: ", txids[1])
         print("2nd entry: ", txids[2])
 
-    tx_db = env.open_db(
-        b"txs_pruned", integerkey=True, dupsort=True, dupfixed=True)
+    tx_db = env.open_db(b"txs_pruned", integerkey=True, dupsort=True, dupfixed=True)
     with env.begin(db=tx_db) as txn:
         cursor = txn.cursor()
         for key, value in cursor:
@@ -81,8 +90,7 @@ async def extract() -> None:
             ar = x.Archive(reader, False, xmr.hf_versions(9))
             tx_index = await monero_core.int_serialize.load_uint(reader, 8)
 
-            extra_bytes = struct.pack("{}B".format(
-                len(res.extra)), *res.extra)
+            extra_bytes = struct.pack("{}B".format(len(res.extra)), *res.extra)
             detected_text = find_string(extra_bytes, 15)
             if detected_text:
                 print(detected_text, binascii.hexlify(txids[tx_index]))
@@ -98,8 +106,7 @@ async def extract() -> None:
             ar1 = x.Archive(reader, False, xmr.hf_versions(9))
             res = await ar1.message(None, xmr.TransactionPrefix)
 
-            extra_bytes = struct.pack("{}B".format(
-                len(res.extra)), *res.extra)
+            extra_bytes = struct.pack("{}B".format(len(res.extra)), *res.extra)
             detected_text = find_string(extra_bytes, 15)
             if detected_text:
                 print(detected_text, binascii.hexlify(txids[tx_id]))
@@ -115,14 +122,14 @@ async def extract() -> None:
                 ar1 = x.Archive(reader, False, xmr.hf_versions(9))
                 res = await ar1.message(None, xmr.TransactionPrefix)
                 # print(res)
-                extra_bytes = struct.pack("{}B".format(
-                    len(res.extra)), *res.extra)
+                extra_bytes = struct.pack("{}B".format(len(res.extra)), *res.extra)
                 detected_text = find_string(extra_bytes, 35)
                 if detected_text:
                     print(detected_text)
 
     block_heights_db = env.open_db(
-        b"blocks", integerkey=True, dupsort=True, dupfixed=True)
+        b"blocks", integerkey=True, dupsort=True, dupfixed=True
+    )
     with env.begin(db=block_heights_db) as txn:
         cursor = txn.cursor()
         i = 0
@@ -133,8 +140,9 @@ async def extract() -> None:
             res = await ar1.message(None, xmr.Block)
             # print("res: ", res)
             length = len(res.miner_tx.extra)
-            extra_bytes = struct.pack("{}B".format(
-                len(res.miner_tx.extra)), *res.miner_tx.extra)
+            extra_bytes = struct.pack(
+                "{}B".format(len(res.miner_tx.extra)), *res.miner_tx.extra
+            )
             # print(bytes, len(bytes))
             detected_text = find_string(extra_bytes, 10)
             if detected_text:
@@ -150,6 +158,7 @@ async def extract() -> None:
             i += 1
             if i % 1000 == 0:
                 print("iterating block:", i)
+
 
 loop = asyncio.get_event_loop()
 result = loop.run_until_complete(extract())

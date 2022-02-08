@@ -1,4 +1,4 @@
-# This is a slightly modified version of 
+# This is a slightly modified version of
 # https://github.com/sr-gi/bitcoin_tools/blob/0f6ea45b6368200e481982982822f0416e0c438d/bitcoin_tools/analysis/status/utils.py#L843
 # ported to python3
 
@@ -21,8 +21,9 @@ out_type = {
     5: "p2pk",
 }
 
+
 def txout_decompress(x):
-    """ Decompresses the Satoshi amount of a UTXO stored in the LevelDB. Code is a port from the Bitcoin Core C++
+    """Decompresses the Satoshi amount of a UTXO stored in the LevelDB. Code is a port from the Bitcoin Core C++
     source:
         https://github.com/bitcoin/bitcoin/blob/v0.13.2/src/compressor.cpp#L161#L185
     :param x: Compressed amount to be decompressed.
@@ -47,8 +48,9 @@ def txout_decompress(x):
         e -= 1
     return n
 
+
 def b128_decode(data):
-    """ Performs the MSB base-128 decoding of a given value. Used to decode variable integers (varints) from the LevelDB.
+    """Performs the MSB base-128 decoding of a given value. Used to decode variable integers (varints) from the LevelDB.
     The code is a port from the Bitcoin Core C++ source. Notice that the code is not exactly the same since the original
     one reads directly from the LevelDB.
     The decoding is used to decode Satoshi amounts stored in the Bitcoin LevelDB (chainstate). After decoding, values
@@ -67,7 +69,7 @@ def b128_decode(data):
     n = 0
     i = 0
     while True:
-        d = int(data[2 * i:2 * i + 2], 16)
+        d = int(data[2 * i : 2 * i + 2], 16)
         n = n << 7 | d & 0x7F
         if d & 0x80:
             n += 1
@@ -77,7 +79,7 @@ def b128_decode(data):
 
 
 def parse_b128(utxo, offset=0):
-    """ Parses a given serialized UTXO to extract a base-128 varint.
+    """Parses a given serialized UTXO to extract a base-128 varint.
     :param utxo: Serialized UTXO from which the varint will be parsed.
     :type utxo: hex str
     :param offset: Offset where the beginning of the varint if located in the UTXO.
@@ -86,17 +88,20 @@ def parse_b128(utxo, offset=0):
     :rtype: hex str, int
     """
 
-    data = utxo[offset:offset+2]
+    data = utxo[offset : offset + 2]
     offset += 2
-    more_bytes = int(data, 16) & 0x80  # MSB b128 Varints have set the bit 128 for every byte but the last one,
+    more_bytes = (
+        int(data, 16) & 0x80
+    )  # MSB b128 Varints have set the bit 128 for every byte but the last one,
     # indicating that there is an additional byte following the one being analyzed. If bit 128 of the byte being read is
     # not set, we are analyzing the last byte, otherwise, we should continue reading.
     while more_bytes:
-        data += utxo[offset:offset+2]
-        more_bytes = int(utxo[offset:offset+2], 16) & 0x80
+        data += utxo[offset : offset + 2]
+        more_bytes = int(utxo[offset : offset + 2], 16) & 0x80
         offset += 2
 
     return data, offset
+
 
 def decode_utxo(coin, outpoint):
     """
@@ -121,7 +126,7 @@ def decode_utxo(coin, outpoint):
 
     # First we will parse all the data encoded in the outpoint, that is, the transaction id and index of the utxo.
     # Check that the input data corresponds to a transaction.
-    assert outpoint[:2] == b'43'
+    assert outpoint[:2] == b"43"
     # Check the provided outpoint has at least the minimum length (1 byte of key code, 32 bytes tx id, 1 byte index)
     assert len(outpoint) >= 68
     # Get the transaction id (LE) by parsing the next 32 bytes of the outpoint.
@@ -153,7 +158,9 @@ def decode_utxo(coin, outpoint):
         offset -= 2
     # Finally, if another value is found, it represents the length of the following data, which is uncompressed.
     else:
-        data_size = (out_type - NSPECIALSCRIPTS) * 2  # If the data is not compacted, the out_type corresponds
+        data_size = (
+            out_type - NSPECIALSCRIPTS
+        ) * 2  # If the data is not compacted, the out_type corresponds
         # to the data size adding the number os special scripts (nSpecialScripts).
 
     # And the remaining data corresponds to the script.
@@ -164,11 +171,17 @@ def decode_utxo(coin, outpoint):
 
     # And to conclude, the output can be encoded. We will store it in a list for backward compatibility with the
     # previous decoder
-    out = {'amount': amount, 'out_type': out_type, 'data': script}
+    out = {"amount": amount, "out_type": out_type, "data": script}
 
     # Even though there is just one output, we will identify it as outputs for backward compatibility with the previous
     # decoder.
-    return {'tx_id': tx_id, 'index': tx_index, 'coinbase': coinbase, 'out': out, 'height': height}
+    return {
+        "tx_id": tx_id,
+        "index": tx_index,
+        "coinbase": coinbase,
+        "out": out,
+        "height": height,
+    }
 
 
 def deobfuscate_value(obfuscation_key, value):
@@ -192,12 +205,17 @@ def deobfuscate_value(obfuscation_key, value):
     else:
         extended_key = obfuscation_key[:l_value]
 
-    r = format(int(value, 16) ^ int(extended_key, 16), 'x').zfill(l_value)
+    r = format(int(value, 16) ^ int(extended_key, 16), "x").zfill(l_value)
 
     return r
 
 
-def parse_ldb(database: Optional[Database], coin=COIN.BITCOIN_MAINNET, btc_dir="/home/drgrid/.bitcoin/testnet3", fin_name='chainstate'):
+def parse_ldb(
+    database: Optional[Database],
+    coin=COIN.BITCOIN_MAINNET,
+    btc_dir="/home/drgrid/.bitcoin/testnet3",
+    fin_name="chainstate",
+):
     """
     Parsed data from the chainstate LevelDB and stores it in a output file.
     :param btc_dir: Path of the bitcoin data directory
@@ -209,9 +227,11 @@ def parse_ldb(database: Optional[Database], coin=COIN.BITCOIN_MAINNET, btc_dir="
     """
 
     # The UTXOs in the database are prefixed with a 'C'
-    prefix = b'C'
+    prefix = b"C"
     # Open the LevelDB
-    db = plyvel.DB(btc_dir + "/" + fin_name, compression=None)  # Change with path to chainstate
+    db = plyvel.DB(
+        btc_dir + "/" + fin_name, compression=None
+    )  # Change with path to chainstate
 
     # Load obfuscation key (if it exists)
     o_key = db.get((unhexlify("0e00") + b"obfuscate_key"))
@@ -220,7 +240,7 @@ def parse_ldb(database: Optional[Database], coin=COIN.BITCOIN_MAINNET, btc_dir="
     # 8-byte zeros are used (since the key will be XORed with the given values).
     if o_key is not None:
         o_key = hexlify(o_key)[2:]
-    
+
     # For every UTXO (identified with a leading 'c'), the key (tx_id) and the value (encoded utxo) is displayed.
     # UTXOs are obfuscated using the obfuscation key (o_key), in order to get them non-obfuscated, a XOR between the
     # value and the key (concatenated until the length of the value is reached) if performed).
@@ -237,12 +257,18 @@ def parse_ldb(database: Optional[Database], coin=COIN.BITCOIN_MAINNET, btc_dir="
         count += 1
         if count % 10000 == 0:
             print(count, value)
-        
-        if database is not None:
-            database.insert_record(value.out.data, value.tx_id,
-                coin, DATATYPE.SCRIPT_PUBKEY, value.height, value.index)
 
+        if database is not None:
+            database.insert_record(
+                value.out.data,
+                value.tx_id,
+                coin,
+                DATATYPE.SCRIPT_PUBKEY,
+                value.height,
+                value.index,
+            )
 
     db.close()
+
 
 # parse_ldb(None)
