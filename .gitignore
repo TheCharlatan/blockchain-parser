@@ -1,5 +1,4 @@
 .mypy_cache
-.vscode
 bitcoin
 test.db
 __pycache__
