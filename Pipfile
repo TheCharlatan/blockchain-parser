@@ -8,6 +8,8 @@ python-bitcoinlib = '*'
 python-magic = '*'
 lmdb = "*"
 plyvel = "*"
+ethereum-etl = "*"
+python-snappy = "*"
 
 [requires]
 python_version = "3.7.0"
