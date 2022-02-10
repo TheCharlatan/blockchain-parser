@@ -24,6 +24,9 @@ number = 0
 def header_hash_key(number: int) -> bytes:
     return bytes("h", "ascii") + number.to_bytes(8, "big") + bytes("n", "ascii")
 
+def block_body_key(number: int, hash: bytes) -> bytes:
+    return bytes("b", "ascii") + number.to_bytes(8, "big") + hash
+
 print(header_hash_key(1000))
 
 print(db.get(bytes("DatabaseVersion", "ascii")))
@@ -57,6 +60,9 @@ class IndexEntry:
         """ Append indexEntry to bytes """
         offset = len(b)
         return b + self.filenum.to_bytes(2, "big") + self.offset.to_bytes(4, "big")
+    
+    def __repr__(self):
+        return f"IndexEntry(filenum={self.filenum} offset={self.offset})"
 
 
 def bounds(start: IndexEntry, end: IndexEntry) -> bytes:
@@ -128,15 +134,19 @@ class FreezerTable:
         buffer: bytes
         with open(self.index, 'rb') as f:
             buffer = f.read(indexEntrySize)
+            print(buffer)
         firstIndex = IndexEntry(buffer)
+        print("first Index:", firstIndex)
         self.tailId = firstIndex.filenum
         self.itemOffset = firstIndex.offset
 
         with open(self.index, 'rb') as f:
             f.seek(offsetsSize - indexEntrySize)
             buffer = f.read(indexEntrySize)
+            print(buffer)
         
         lastIndex = IndexEntry(buffer)
+        print("last Index:", lastIndex)
         self.head = self.openFile(lastIndex.filenum)
         contentSize = os.stat(self.head).st_size
         if contentSize is None:
@@ -166,7 +176,7 @@ class FreezerTable:
     def RetrieveItems(self, start: int, count: int, maxBytes: int) -> List[bytes]:
         diskData, sizes = self.retrieveItems(start, count, maxBytes)
         print("diskData:", diskData)
-        output = bytearray(b'')
+        output = []
         offset = 0 # offset for reading
         outputSize = 0 # size of uncompressed data
 
@@ -179,20 +189,18 @@ class FreezerTable:
             # check the length first
             if not self.noCompression:
                 print(item)
-                res = snappy.isValidCompressed(item)
-                print("decompress test result:", res)
                 data = snappy.decompress(item)
                 decompressedSize = len(data)
                 # decompressedSize = snappy.DecodeLen(item)
             if i > 0 and (outputSize+decompressedSize) > maxBytes:
                 break
             if not self.noCompression:
-                output.extend(bytearray(data))
+                output.append(data)
             else:
-                output.exnted(bytearray(item))
+                output.append(item)
             outputSize += decompressedSize
         
-        return bytes(output)
+        return output
             
     
     def retrieveItems(self, start: int, count: int, maxBytes: int) -> Tuple[bytes, List[int]]:
@@ -224,6 +232,7 @@ class FreezerTable:
                 output.extend(f.read(length))
 
         indices = self.getIndices(start, count)
+        print("indices:", indices)
 
         sizes = []
         totalSize = 0
@@ -273,8 +282,10 @@ class FreezerTable:
         range so that the items are within bounds. If this method is used to read out of bounds, 
         it will raise an exception.
         """
+        print("from: ", _from)
         # Apply the table-offset
-        _from = _from - int(self.itemOffset)
+        _from = _from - self.itemOffset
+        print("from offset: ", _from)
         # For reading N items, we need N+1 indices
         buffer: bytes
         with open(self.index, 'rb') as f:
@@ -296,13 +307,31 @@ class FreezerTable:
             indices[0].filenum = indices[1].filenum
         
         return indices
-        
 
+from ethereum_rlp import Body
+
+# Example for an RLP object
 class DBReader:
     def __init__(self):
-        freezer_header_table = FreezerTable(ancient_chaindata_path, freezerHeaderTable, False, True)
-        res = freezer_header_table.Retrieve(10)
-        print("result:", res)
+        # block 46147 has the first transaction
+        freezer_hash_table = FreezerTable(ancient_chaindata_path, freezerHashTable, True, True)
+        hash = freezer_hash_table.Retrieve(46147)
+        print("result:", hash, "length:", len(hash))
+        print("results hex: ", hash.hex())
+
+        freezer_body_table = FreezerTable(ancient_chaindata_path, freezerBodiesTable, False, True)
+        body = freezer_body_table.Retrieve(46147)
+        print("result:", body, "length:", len(body))
+        print("results hex: ", body.hex())
+        print("decoded:", rlp.decode(body))
+        print("body from db:", db.get(block_body_key(46147, hash)))
+        decoded_body = rlp.decode(body, Body)
+        print("custom decode body:", decoded_body)
+        tx = decoded_body.Transactions[0]
+        print("custom decoded tx:", tx)
+        print("transaction hash:", tx.hash().hex())
+
+
 
 
 reader = DBReader()
