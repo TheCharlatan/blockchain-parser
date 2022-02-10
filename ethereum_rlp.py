@@ -1,4 +1,4 @@
-from rlp.sedes import (Serializable, List, BigEndianInt, Binary, binary, big_endian_int)
+from rlp.sedes import (Serializable, CountableList, BigEndianInt, Binary, binary, big_endian_int)
 import rlp
 from eth_hash.auto import keccak
 
@@ -62,7 +62,7 @@ class Body(Serializable):
     RLP object for block bodies
     """
     fields = [
-        ('Transactions', List([Transaction], False)),
-        ('Uncles', List([Header], False))
+        ('Transactions', CountableList(Transaction)),
+        ('Uncles', CountableList(Header))
     ]
 

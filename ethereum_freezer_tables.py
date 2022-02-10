@@ -115,7 +115,6 @@ class FreezerTable:
         with open(self.index, 'rb') as f:
             f.seek(offsetsSize - indexEntrySize)
             buffer = f.read(indexEntrySize)
-            print(buffer)
         
         lastIndex = IndexEntry(buffer)
         print("last Index:", lastIndex)
@@ -147,7 +146,6 @@ class FreezerTable:
     
     def RetrieveItems(self, start: int, count: int, maxBytes: int) -> List[bytes]:
         diskData, sizes = self.retrieveItems(start, count, maxBytes)
-        print("diskData:", diskData)
         output = []
         offset = 0 # offset for reading
         outputSize = 0 # size of uncompressed data
@@ -160,7 +158,6 @@ class FreezerTable:
             data: bytes
             # check the length first
             if not self.noCompression:
-                print(item)
                 data = snappy.decompress(item)
                 decompressedSize = len(data)
                 # decompressedSize = snappy.DecodeLen(item)
@@ -204,7 +201,6 @@ class FreezerTable:
                 output.extend(f.read(length))
 
         indices = self.getIndices(start, count)
-        print("indices:", indices)
 
         sizes = []
         totalSize = 0
@@ -239,9 +235,6 @@ class FreezerTable:
             if i == len(indices)-2 or totalSize > maxBytes:
                 readData(secondIndex.filenum, readStart, unreadSize, output)
                 outputSize += unreadSize
-        print("retrieved data:", output)
-        print("output size:", outputSize)
-        print("data to be returned:", output[:outputSize])
 
         return (bytes(output[:outputSize]), sizes)
 
@@ -254,10 +247,8 @@ class FreezerTable:
         range so that the items are within bounds. If this method is used to read out of bounds, 
         it will raise an exception.
         """
-        print("from: ", _from)
         # Apply the table-offset
         _from = _from - self.itemOffset
-        print("from offset: ", _from)
         # For reading N items, we need N+1 indices
         buffer: bytes
         with open(self.index, 'rb') as f:
