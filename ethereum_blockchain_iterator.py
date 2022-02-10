@@ -8,7 +8,7 @@ class ParseEthereumBlockHeaders:
         self.table = FreezerHeadersTable(ancient_chaindata_path)
         self.eth_leveldb = EthLevelDB(chaindata_path)
         self.value = 0
-    
+
     def get_header(self, number: int) -> Header:
         try:
             header = self.table.get_header_by_height(number)
@@ -16,11 +16,11 @@ class ParseEthereumBlockHeaders:
             header = self.eth_leveldb.get_header_by_height(number)
         if header is None:
             raise Exception(f"header not found for block height: {number}")
-        return  header
-    
+        return header
+
     def __iter__(self):
         return self
-    
+
     def __next__(self):
         try:
             header = self.get_header(self.value + 1)
@@ -29,12 +29,13 @@ class ParseEthereumBlockHeaders:
         self.value += 1
         return header
 
+
 class ParseEthereumBlockBodies:
     def __init__(self, ancient_chaindata_path: str, chaindata_path: str):
         self.table = FreezerBodiesTable(ancient_chaindata_path)
         self.eth_leveldb = EthLevelDB(chaindata_path)
         self.value = 0
-    
+
     def get_body(self, number: int) -> Body:
         try:
             body = self.table.get_body_by_height(number)
@@ -43,7 +44,7 @@ class ParseEthereumBlockBodies:
         if body is None:
             raise Exception(f"body not found for block height: {number}")
         return body
-    
+
     def __iter__(self):
         return self
 
@@ -54,5 +55,3 @@ class ParseEthereumBlockBodies:
             raise StopIteration
         self.value += 1
         return body
-
-    

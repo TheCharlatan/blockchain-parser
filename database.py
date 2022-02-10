@@ -12,6 +12,7 @@ class COIN(enum.Enum):
     MONERO_MAINNET = "monero_mainnet"
     MONERO_STAGENET = "monero_stagnet"
     MONERO_TESTNET = "monero_testnet"
+    ETHEREUM_MAINNET = "ethereum_mainnet"
 
 
 class DATATYPE(enum.Enum):

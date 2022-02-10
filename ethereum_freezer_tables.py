@@ -15,6 +15,7 @@ freezerDifficultiesTable = "diffs"
 freezerTableSize = 2 * 1000 * 1000 * 1000
 indexEntrySize = 6
 
+
 class IndexEntry:
     """
         filenum: 2 byte integer
@@ -32,7 +33,7 @@ class IndexEntry:
         """ Append indexEntry to bytes """
         offset = len(b)
         return b + self.filenum.to_bytes(2, "big") + self.offset.to_bytes(4, "big")
-    
+
     def __repr__(self):
         return f"IndexEntry(filenum={self.filenum} offset={self.offset})"
 
@@ -104,7 +105,7 @@ class FreezerTable:
 
         # Read the index zero to determine which file is the earliest and what item offset to use
         buffer: bytes
-        with open(self.index, 'rb') as f:
+        with open(self.index, "rb") as f:
             buffer = f.read(indexEntrySize)
             print(buffer)
         firstIndex = IndexEntry(buffer)
@@ -112,19 +113,19 @@ class FreezerTable:
         self.tailId = firstIndex.filenum
         self.itemOffset = firstIndex.offset
 
-        with open(self.index, 'rb') as f:
+        with open(self.index, "rb") as f:
             f.seek(offsetsSize - indexEntrySize)
             buffer = f.read(indexEntrySize)
-        
+
         lastIndex = IndexEntry(buffer)
         print("last Index:", lastIndex)
         self.head = self.openFile(lastIndex.filenum)
         contentSize = os.stat(self.head).st_size
         if contentSize is None:
             raise Exception("file could not be statted")
-        
+
         self.headBytes = contentSize
-        self.items = self.itemOffset + int(offsetsSize/indexEntrySize-1)
+        self.items = self.itemOffset + int(offsetsSize / indexEntrySize - 1)
         self.headId = lastIndex.filenum
 
     def openFile(self, num: int) -> str:
@@ -143,16 +144,16 @@ class FreezerTable:
     def Retrieve(self, item: int) -> bytes:
         items = self.RetrieveItems(item, 1, 0)
         return items[0]
-    
+
     def RetrieveItems(self, start: int, count: int, maxBytes: int) -> List[bytes]:
         diskData, sizes = self.retrieveItems(start, count, maxBytes)
         output = []
-        offset = 0 # offset for reading
-        outputSize = 0 # size of uncompressed data
+        offset = 0  # offset for reading
+        outputSize = 0  # size of uncompressed data
 
         # Slice up the data and decompress
         for (i, diskSize) in enumerate(sizes):
-            item = diskData[offset: offset+diskSize]
+            item = diskData[offset : offset + diskSize]
             offset += diskSize
             decompressedSize = diskSize
             data: bytes
@@ -161,18 +162,19 @@ class FreezerTable:
                 data = snappy.decompress(item)
                 decompressedSize = len(data)
                 # decompressedSize = snappy.DecodeLen(item)
-            if i > 0 and (outputSize+decompressedSize) > maxBytes:
+            if i > 0 and (outputSize + decompressedSize) > maxBytes:
                 break
             if not self.noCompression:
                 output.append(data)
             else:
                 output.append(item)
             outputSize += decompressedSize
-        
+
         return output
-            
-    
-    def retrieveItems(self, start: int, count: int, maxBytes: int) -> Tuple[bytes, List[int]]:
+
+    def retrieveItems(
+        self, start: int, count: int, maxBytes: int
+    ) -> Tuple[bytes, List[int]]:
         """" Reads up to 'count' items from the table. Reads at least one itme, but otherwise avoids 
         reading more than maxBytes bytes. Return the (potentially compressed) data, and the sizes 
         """
@@ -180,23 +182,23 @@ class FreezerTable:
         # Ensure the table is initialized
         if self.index is None or self.head is None:
             raise Exception("table not open")
-        
+
         itemCount = self.items
         # Ensure the start is written, not deleted from the tail, and that the
         # caller actually wants something
         if itemCount <= start or self.itemOffset > start or count == 0:
             raise Exception("item out of bounds")
-        if start+count > itemCount:
+        if start + count > itemCount:
             count = itemCount - start
 
-        output: bytearray = bytearray(b'')
+        output: bytearray = bytearray(b"")
         outputSize = 0
-        
+
         def readData(fileId: int, start: int, length: int, output: bytearray):
             dataFile = self.files[fileId]
             if dataFile is None:
                 raise Exception("missing data file %d", fileId)
-            with open(dataFile, 'rb') as f:
+            with open(dataFile, "rb") as f:
                 f.seek(start)
                 output.extend(f.read(length))
 
@@ -208,7 +210,7 @@ class FreezerTable:
         unreadSize = 0
 
         for (i, firstIndex) in enumerate(indices[:-1]):
-            secondIndex = indices[i+1]
+            secondIndex = indices[i + 1]
             # Determine the size of the item
             (offset1, offset2, _) = bounds(firstIndex, secondIndex)
             size = int(offset2 - offset1)
@@ -220,8 +222,8 @@ class FreezerTable:
                     outputSize += unreadSize
                     unreadSize = 0
                     readStart = 0
-            if i>0 and (totalSize+size) > maxBytes:
-                # About to break out due ot byte limit being exceeded. We don't 
+            if i > 0 and (totalSize + size) > maxBytes:
+                # About to break out due ot byte limit being exceeded. We don't
                 # read this last item, but we need to do the deferred reads now.
                 if unreadSize > 0:
                     readData(secondIndex.filenum, readStart, unreadSize, output)
@@ -232,12 +234,11 @@ class FreezerTable:
             unreadSize += size
             totalSize += size
             sizes.append(size)
-            if i == len(indices)-2 or totalSize > maxBytes:
+            if i == len(indices) - 2 or totalSize > maxBytes:
                 readData(secondIndex.filenum, readStart, unreadSize, output)
                 outputSize += unreadSize
 
         return (bytes(output[:outputSize]), sizes)
-
 
     def getIndices(self, _from: int, count: int) -> List[IndexEntry]:
         """ Returns the index entries for the given from-item, covering 'count' items.
@@ -251,44 +252,52 @@ class FreezerTable:
         _from = _from - self.itemOffset
         # For reading N items, we need N+1 indices
         buffer: bytes
-        with open(self.index, 'rb') as f:
-            f.seek(_from*indexEntrySize)
-            buffer = f.read((count+1)*indexEntrySize)
+        with open(self.index, "rb") as f:
+            f.seek(_from * indexEntrySize)
+            buffer = f.read((count + 1) * indexEntrySize)
 
         offset = 0
         indices = []
-        for _ in range(_from, _from+count+1):
+        for _ in range(_from, _from + count + 1):
             index = IndexEntry(buffer[offset:])
             offset += indexEntrySize
             indices.append(index)
-        
+
         if _from == 0:
             # Special case if we're reading the first item in the freezer. We assume that the
             # First item always starts from zero. This means we can use the first item metadata
             # to carry information about the 'global' offset, for the delection-case
             indices[0].offset = 0
             indices[0].filenum = indices[1].filenum
-        
+
         return indices
 
 
 class FreezerHashesTable(FreezerTable):
     def __init__(self, ancient_chaindata_path: str):
-        super(FreezerHashesTable, self).__init__(ancient_chaindata_path, freezerHashesTable, True, True)
-    
+        super(FreezerHashesTable, self).__init__(
+            ancient_chaindata_path, freezerHashesTable, True, True
+        )
+
     def get_hash_by_height(self, height: int) -> bytes:
         return self.Retrieve(height)
-    
+
+
 class FreezerBodiesTable(FreezerTable):
     def __init__(self, ancient_chaindata_path: str):
-        super(FreezerBodiesTable, self).__init__(ancient_chaindata_path, freezerBodiesTable, False, True)
-    
+        super(FreezerBodiesTable, self).__init__(
+            ancient_chaindata_path, freezerBodiesTable, False, True
+        )
+
     def get_body_by_height(self, height: int) -> Body:
         return rlp.decode(self.Retrieve(height), Body)
 
+
 class FreezerHeadersTable(FreezerTable):
     def __init__(self, ancient_chaindata_path: str):
-        super(FreezerHeadersTable, self).__init__(ancient_chaindata_path, freezerHeadersTable, False, True)
+        super(FreezerHeadersTable, self).__init__(
+            ancient_chaindata_path, freezerHeadersTable, False, True
+        )
 
     def get_header_by_height(self, height: int) -> Header:
         return rlp.decode(self.Retrieve(height), Header)
