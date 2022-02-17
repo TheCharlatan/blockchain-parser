@@ -21,6 +21,7 @@ class DATATYPE(enum.Enum):
     SCRIPT_SIG = "scriptsig"  # input transaction data
     SCRIPT_PUBKEY = "script_pubkey"  # output transaction data
     TX_EXTRA = "tx_extra"
+    TX_DATA = "tx_data"
 
 
 class LABEL(enum.Enum):
