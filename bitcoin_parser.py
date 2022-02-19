@@ -283,7 +283,7 @@ def is_p2wpkh_output(script: bitcoin.core.script.CScript) -> bool:
     return script[0] == bitcoin.core.script.OP_0
 
 
-def is_p2wsh_output(script: bitcoin.core.script.CSCript) -> bool:
+def is_p2wsh_output(script: bitcoin.core.script.CScript) -> bool:
     """Checks if the output script if of the form:
             OP_0 <script hash>
     :param script: Script to be analyzed.
@@ -297,7 +297,7 @@ def is_p2wsh_output(script: bitcoin.core.script.CSCript) -> bool:
     return script[0] == bitcoin.core.script.OP_0
 
 
-def is_p2tr_output(script: bitcoin.core.script.CSCript) -> bool:
+def is_p2tr_output(script: bitcoin.core.script.CScript) -> bool:
     """Checks if the output script if of the form:
             OP_1 <x only pubkey>
     :param script: Script to be analyzed.

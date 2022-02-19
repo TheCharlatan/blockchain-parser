@@ -73,6 +73,25 @@ def is_default_extra(extra: bytes) -> bool:
         return True
     return False
 
+async def stop_all():
+    return ""
+
+async def deserialize_tx_indices(values):
+    tasks = (deserialize_tx_index(value) for value in values)
+    done = await asyncio.gather(stop_all(), *tasks)
+    return done[1:]
+
+async def serialize_uint64_list(monero_tx_indices):
+    tasks = (serialize_uint64(monero_tx_index.data.tx_id) for monero_tx_index in monero_tx_indices)
+    done = await asyncio.gather(stop_all(), *tasks)
+    return done[1:]
+
+
+async def deserialize_transactions(monero_txs_raw):
+    tasks = (deserialize_transaction(monero_tx_raw) for monero_tx_raw in monero_txs_raw)
+    done = await asyncio.gather(stop_all(), *tasks)
+    return done[1:]
+
 
 class MoneroParser(CoinParser):
     def __init__(self, blockchain_path: str, coin: COIN) -> None:
@@ -94,7 +113,7 @@ class MoneroParser(CoinParser):
 
         print(lmdb.version())
         env = lmdb.open(
-            "/home/drgrid/.bitmonero/stagenet/lmdb",
+            "/home/drgrid/.bitmonero/lmdb",
             subdir=True,
             lock=False,
             readonly=True,
@@ -106,46 +125,60 @@ class MoneroParser(CoinParser):
         )
         tx_db = env.open_db(b"txs_pruned", integerkey=True, dupsort=True, dupfixed=True)
 
+        values = []
+        counter = 0
         with env.begin(write=False) as txn:
             for _, value in txn.cursor(db=index_db):
-                # Get the TxIndex struct from the database value
-                monero_tx_index = asyncio.get_event_loop().run_until_complete(
-                    deserialize_tx_index(value)
-                )
+                counter += 1
+                values.append(value)
+                if len(values) == 1000:
 
-                # Convert the extracted database transaction id from uint64 back to bytes
-                db_tx_index = asyncio.get_event_loop().run_until_complete(
-                    serialize_uint64(monero_tx_index.data.tx_id)
-                )
-
-                # Get the full transaction from the database with the transaction id bytes
-                monero_tx_raw = txn.get(db_tx_index, db=tx_db)
-                monero_tx = asyncio.get_event_loop().run_until_complete(
-                    deserialize_transaction(monero_tx_raw)
-                )
-
-                # Extract the extra bytes from the monero serialized data,
-                extra_bytes = struct.pack(
-                    "{}B".format(len(monero_tx.extra)), *monero_tx.extra
-                )
-
-                # Ignore extra bytes that are in the default format - they are unlikely to contain data
-                if is_default_extra(extra_bytes):
-                    continue
-
-                if database is not None:
-                    database.insert_record(
-                        extra_bytes,
-                        value.key,
-                        self.coin,
-                        DATATYPE.TX_EXTRA,
-                        monero_tx_index.data.block_id,
-                        0,
+                    # Get the TxIndex struct from the database value
+                    monero_tx_indices = asyncio.get_event_loop().run_until_complete(
+                        deserialize_tx_indices(values)
                     )
-                else:
-                    # Scan for strings in the extracted data to reduce data retained on disk
-                    detected_text = detectors.gnu_strings(extra_bytes, 10)
-                    if detected_text:
-                        print(detected_text, binascii.hexlify(monero_tx_index.key))
+
+                    # Convert the extracted database transaction id from uint64 back to bytes
+                    db_tx_indices = asyncio.get_event_loop().run_until_complete(
+                        serialize_uint64_list(monero_tx_indices)
+                    )
+
+                    # Get the full transaction from the database with the transaction id bytes
+                    monero_txs_raw = []
+                    for db_tx_index in db_tx_indices:
+                        monero_txs_raw.append(txn.get(db_tx_index, db=tx_db))
+
+                    monero_txs = asyncio.get_event_loop().run_until_complete(
+                        deserialize_transactions(monero_txs_raw)
+                    )
+
+                    # Extract the extra bytes from the monero serialized data,
+                    extra_bytes_list = [struct.pack(
+                        "{}B".format(len(monero_tx.extra)), *monero_tx.extra
+                    ) for monero_tx in monero_txs]
+
+                    for i in range(len(values)):
+                        # Ignore extra bytes that are in the default format - they are unlikely to contain data
+                        if is_default_extra(extra_bytes_list[i]):
+                            continue
+
+                        if database is not None:
+                            print(extra_bytes_list[i], monero_tx_indices[i].data.block_id, monero_tx_indices[i].key)
+                            database.insert_record(
+                                extra_bytes_list[i],
+                                monero_tx_indices[i].key,
+                                self.coin,
+                                DATATYPE.TX_EXTRA,
+                                monero_tx_indices[i].data.block_id,
+                                0,
+                            )
+                        else:
+                            # Scan for strings in the extracted data to reduce data retained on disk
+                            detected_text = detectors.gnu_strings(extra_bytes_list[i], 10)
+                            if detected_text:
+                                print("detected text:", detected_text, binascii.hexlify(monero_tx_indices[i].key))
+                    
+                    values = []
+                    print(counter)
 
             print("\n\nCompleted Monero Database parsing\n\n")

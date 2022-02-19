@@ -70,12 +70,17 @@ class Database:
     ) -> None:
         conn = sqlite3.connect(self.name)
         """Insert a new record into the database."""
-        conn.execute(
-            "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
-            (data, txid, coin.value, data_type.value, block_height, extra_index),
-        )
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute(
+                "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
+                (data, txid, coin.value, data_type.value, block_height, extra_index),
+            )
+            conn.commit()
+            conn.close()
+        except sqlite3.IntegrityError:
+            return
+        except BaseException:
+            raise
 
     def get_records(self, txid: str, extra_index: int) -> None:
         conn = sqlite3.connect(self.name)
