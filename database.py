@@ -59,6 +59,27 @@ class Database:
         conn.commit()
         conn.close()
 
+    def insert_records(
+        self,
+        records,
+    ):
+        conn = sqlite3.connect(self.name)
+        cursor = conn.cursor()
+        try:
+            cursor.executemany(
+                    "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
+                    records
+                )
+        except sqlite3.IntegrityError:
+            return
+        except BaseException:
+            raise
+
+        cursor.close()
+        conn.commit()
+        conn.close()
+
+
     def insert_record(
         self,
         data: str,

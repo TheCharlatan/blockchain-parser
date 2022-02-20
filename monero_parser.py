@@ -1,3 +1,4 @@
+from calendar import c
 from typing import Optional
 from database import COIN, DATATYPE, Database
 import lmdb
@@ -9,6 +10,38 @@ import struct
 import binascii
 import detectors
 from parser import CoinParser
+import threading
+import zmq
+import json
+import pickle
+
+class DatabaseWriter(threading.Thread):
+    def __init__(self, database: Database, receiver: zmq.Socket, coin: COIN):
+        self._db = database
+        self._receiver = receiver
+        self._coin = coin
+        threading.Thread.__init__(self)
+    
+    def run(self):
+        while True:
+            [iter, extra_bytes_list, monero_tx_indices] = pickle.loads(self._receiver.recv())
+            print("writing...")
+            records = []
+
+            for i in range(len(extra_bytes_list)):
+                record = (
+                    extra_bytes_list[i],
+                    bytes(monero_tx_indices[i].key).hex(),
+                    self._coin.value,
+                    DATATYPE.TX_EXTRA.value,
+                    monero_tx_indices[i].data.block_id,
+                    0,
+                )
+                records.append(record)
+            
+            self._db.insert_records(records)
+
+            print("written...", iter)
 
 
 async def deserialize_tx_index(tx_index_raw: bytes) -> xmr.TxIndex:
@@ -39,20 +72,6 @@ async def deserialize_transaction(monero_tx_raw: bytes) -> xmr.TransactionPrefix
     return monero_tx
 
 
-async def serialize_uint64(number: int) -> bytearray:
-    """Serialize a number to a uint64 in byte representation
-    :param number: Number to be serialized.
-    :type number: int
-    :return: The serialized number in bytes
-    :rtype: bytearray
-    """
-
-    writer = x.MemoryReaderWriter()
-    await monero_core.int_serialize.dump_uint(writer, number, 8)
-    db_tx_index = bytearray(writer.get_buffer())
-    return db_tx_index
-
-
 def is_default_extra(extra: bytes) -> bool:
     """Checks if the tx_extra follows the standard format of:
             0x01 <pubkey> 0x02 0x09 0x01 <encrypted_payment_id>
@@ -80,12 +99,6 @@ async def deserialize_tx_indices(values):
     tasks = (deserialize_tx_index(value) for value in values)
     done = await asyncio.gather(stop_all(), *tasks)
     return done[1:]
-
-async def serialize_uint64_list(monero_tx_indices):
-    tasks = (serialize_uint64(monero_tx_index.data.tx_id) for monero_tx_index in monero_tx_indices)
-    done = await asyncio.gather(stop_all(), *tasks)
-    return done[1:]
-
 
 async def deserialize_transactions(monero_txs_raw):
     tasks = (deserialize_transaction(monero_tx_raw) for monero_tx_raw in monero_txs_raw)
@@ -123,7 +136,20 @@ class MoneroParser(CoinParser):
         index_db = env.open_db(
             b"tx_indices", integerkey=True, dupsort=True, dupfixed=True
         )
-        tx_db = env.open_db(b"txs_pruned", integerkey=True, dupsort=True, dupfixed=True)
+        tx_db = env.open_db(b"txs_pruned", integerkey=True)
+
+        context = zmq.Context()
+
+        event_sender = context.socket(zmq.PAIR)
+        event_receiver = context.socket(zmq.PAIR)
+        event_sender.bind("inproc://dbbridge")
+        event_receiver.connect("inproc://dbbridge")
+
+        writer = DatabaseWriter(database, event_receiver, self.coin)
+        writer.start()
+
+        def results(i):
+            return i[1]
 
         values = []
         counter = 0
@@ -131,25 +157,25 @@ class MoneroParser(CoinParser):
             for _, value in txn.cursor(db=index_db):
                 counter += 1
                 values.append(value)
-                if len(values) == 1000:
+                if len(values) == 10000:
 
                     # Get the TxIndex struct from the database value
                     monero_tx_indices = asyncio.get_event_loop().run_until_complete(
                         deserialize_tx_indices(values)
                     )
 
-                    # Convert the extracted database transaction id from uint64 back to bytes
-                    db_tx_indices = asyncio.get_event_loop().run_until_complete(
-                        serialize_uint64_list(monero_tx_indices)
-                    )
+                    # translate the tx index back to bytes for retrieval of the full transaction
+                    db_tx_indices = [monero_tx_index.data.tx_id.to_bytes(8, "little") for monero_tx_index in monero_tx_indices]
 
+                    print("getting transaction")
                     # Get the full transaction from the database with the transaction id bytes
-                    monero_txs_raw = []
-                    for db_tx_index in db_tx_indices:
-                        monero_txs_raw.append(txn.get(db_tx_index, db=tx_db))
+                    cursor = txn.cursor(db=tx_db)
+                    monero_txs_raw = cursor.getmulti(db_tx_indices)
+                    cursor.close()
+                    print("got transaction")
 
                     monero_txs = asyncio.get_event_loop().run_until_complete(
-                        deserialize_transactions(monero_txs_raw)
+                        deserialize_transactions(map(results, monero_txs_raw))
                     )
 
                     # Extract the extra bytes from the monero serialized data,
@@ -157,27 +183,30 @@ class MoneroParser(CoinParser):
                         "{}B".format(len(monero_tx.extra)), *monero_tx.extra
                     ) for monero_tx in monero_txs]
 
-                    for i in range(len(values)):
-                        # Ignore extra bytes that are in the default format - they are unlikely to contain data
-                        if is_default_extra(extra_bytes_list[i]):
+                    for extra_bytes in extra_bytes_list:
+                        if is_default_extra(extra_bytes):
                             continue
+                
+                    event_sender.send(pickle.dumps([counter, extra_bytes_list, monero_tx_indices]))
 
-                        if database is not None:
-                            print(extra_bytes_list[i], monero_tx_indices[i].data.block_id, monero_tx_indices[i].key)
-                            database.insert_record(
-                                extra_bytes_list[i],
-                                monero_tx_indices[i].key,
-                                self.coin,
-                                DATATYPE.TX_EXTRA,
-                                monero_tx_indices[i].data.block_id,
-                                0,
-                            )
-                        else:
+                    # for i in range(len(values)):
+                        # if database is not None:
+                            # print(extra_bytes_list[i], monero_tx_indices[i].data.block_id, monero_tx_indices[i].key)
+                            # database.insert_record(
+                                # extra_bytes_list[i],
+                                # monero_tx_indices[i].key,
+                                # self.coin,
+                                # DATATYPE.TX_EXTRA,
+                                # monero_tx_indices[i].data.block_id,
+                                # 0,
+                            # )
+                        # else:
                             # Scan for strings in the extracted data to reduce data retained on disk
-                            detected_text = detectors.gnu_strings(extra_bytes_list[i], 10)
-                            if detected_text:
-                                print("detected text:", detected_text, binascii.hexlify(monero_tx_indices[i].key))
-                    
+                            # detected_text = detectors.gnu_strings(extra_bytes_list[i], 10)
+                            # print("detected text")
+                            # if detected_text:
+                                # print("detected text:", detected_text, binascii.hexlify(monero_tx_indices[i].key))
+ 
                     values = []
                     print(counter)
 

@@ -10,6 +10,7 @@ lmdb = "*"
 plyvel = "*"
 ethereum-etl = "*"
 python-snappy = "*"
+pyzmq = "*"
 
 [requires]
 python_version = "3.7.0"
