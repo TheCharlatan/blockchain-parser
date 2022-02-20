@@ -1,5 +1,5 @@
 from calendar import c
-from typing import Optional
+from typing import List, Optional
 from database import COIN, DATATYPE, Database
 import lmdb
 from monero_serialize import xmrserialize as x
@@ -15,7 +15,16 @@ def async_results(i):
     return i[1]
 
 class TxParser(threading.Thread):
+    """TxParser acts as a worker thread for parsing raw monero transactions
+    and communicates through zmq sockets"""
+
     def __init__(self, receiver: zmq.Socket, sender: zmq.Socket):
+        """
+        :param receiver: Receives raw transactions to parse.
+        :type receiver: zmq.Socket
+        :param sender: Sends parsed transactions.
+        :type sender: zmq.Socket
+        """
         self._receiver = receiver
         self._sender = sender
         threading.Thread.__init__(self)
@@ -40,7 +49,17 @@ class TxParser(threading.Thread):
 
 
 class DatabaseWriter(threading.Thread):
+    """DatabaseWriter acts as a worker thread for writing to the sql database
+    and receives from a zmq socket"""
+
     def __init__(self, database: Database, receiver: zmq.Socket, coin: COIN):
+        """
+        :param database: Database to be written into
+        :type database: Database
+        :param receiver: Receives parsed extra bytes and monero transaction indices
+        :type receiver: zmq.Socket
+        :param coin: Some monero coin
+        :type coin: Coin"""
         self._db = database
         self._receiver = receiver
         self._coin = coin
@@ -123,14 +142,23 @@ def is_default_extra(extra: bytes) -> bool:
     return False
 
 async def stop_all():
+    """Dummy function for asyncio.gather"""
     return ""
 
-async def deserialize_tx_indices(values):
+async def deserialize_tx_indices(values: List[bytes]):
+    """
+    :param values: List of raw tx indices
+    :type values: List[bytes]
+    """
     tasks = (deserialize_tx_index(value) for value in values)
     done = await asyncio.gather(stop_all(), *tasks)
     return done[1:]
 
-async def deserialize_transactions(monero_txs_raw):
+async def deserialize_transactions(monero_txs_raw: List[bytes]):
+    """
+    :param monero_txs_raw: List of raw monero transactions
+    :type monero_txs_raw: List[bytes]
+    """
     tasks = (deserialize_transaction(monero_tx_raw) for monero_tx_raw in monero_txs_raw)
     done = await asyncio.gather(stop_all(), *tasks)
     return done[1:]
@@ -139,7 +167,7 @@ async def deserialize_transactions(monero_txs_raw):
 class MoneroParser(CoinParser):
     def __init__(self, blockchain_path: str, coin: COIN) -> None:
         """
-        :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero/stagenet/lmdb).
+        :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero/lmdb).
         :type blockchain_path: str
         :param coin: One of the Monero compatible coins.
         :type coin: COIN
@@ -156,7 +184,7 @@ class MoneroParser(CoinParser):
 
         print(lmdb.version())
         env = lmdb.open(
-            "/home/drgrid/.bitmonero/lmdb",
+            self.blockchain_path,
             subdir=True,
             lock=False,
             readonly=True,
