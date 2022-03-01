@@ -117,7 +117,15 @@ async def deserialize_transaction(monero_tx_raw: bytes) -> xmr.TransactionPrefix
 
     reader = x.MemoryReaderWriter(bytearray(monero_tx_raw))
     archiver = x.Archive(reader, False, xmr.hf_versions(9))
-    monero_tx = await archiver.message(None, xmr.TransactionPrefix)
+    try:
+        monero_tx = await archiver.message(None, xmr.TransactionPrefix)
+    except ValueError:
+        reader = x.MemoryReaderWriter(bytearray(monero_tx_raw))
+        archiver = x.Archive(reader, False, xmr.hf_versions(9))
+        monero_tx = await archiver.message(None, xmr.TransactionPrefix)
+    except:
+        print(monero_tx_raw)
+        raise
     return monero_tx
 
 
@@ -152,6 +160,7 @@ async def deserialize_tx_indices(values: List[bytes]):
     """
     tasks = (deserialize_tx_index(value) for value in values)
     done = await asyncio.gather(stop_all(), *tasks)
+    # the first entry is empty for some reason
     return done[1:]
 
 async def deserialize_transactions(monero_txs_raw: List[bytes]):
@@ -161,6 +170,7 @@ async def deserialize_transactions(monero_txs_raw: List[bytes]):
     """
     tasks = (deserialize_transaction(monero_tx_raw) for monero_tx_raw in monero_txs_raw)
     done = await asyncio.gather(stop_all(), *tasks)
+    # the first entry is empty for some reason
     return done[1:]
 
 
