@@ -70,7 +70,7 @@ class DatabaseWriter(threading.Thread):
 
         while True:
             [counter, extra_bytes_list, monero_tx_indices] = pickle.loads(self._receiver.recv())
-            print("writing monero...")
+            print("writing " + self._coin)
             records = []
 
             for i in range(len(extra_bytes_list)):
@@ -90,7 +90,7 @@ class DatabaseWriter(threading.Thread):
             
             self._db.insert_records(records)
 
-            print("monero written...", counter, default_extra_counter)
+            print("written ", self._coin, counter, default_extra_counter)
 
 
 async def deserialize_tx_index(tx_index_raw: bytes) -> xmr.TxIndex:
@@ -210,13 +210,13 @@ class MoneroParser(CoinParser):
 
         tx_parser_event_sender = context.socket(zmq.PAIR)
         tx_parser_event_receiver = context.socket(zmq.PAIR)
-        tx_parser_event_sender.bind("inproc://txbridge")
-        tx_parser_event_receiver.connect("inproc://txbridge")
+        tx_parser_event_sender.bind("inproc://monero_txbridge")
+        tx_parser_event_receiver.connect("inproc://monero_txbridge")
 
         database_event_sender = context.socket(zmq.PAIR)
         database_event_receiver = context.socket(zmq.PAIR)
-        database_event_sender.bind("inproc://dbbridge")
-        database_event_receiver.connect("inproc://dbbridge")
+        database_event_sender.bind("inproc://monero_dbbridge")
+        database_event_receiver.connect("inproc://monero_dbbridge")
 
         tx_reader = TxParser(tx_parser_event_receiver, database_event_sender)
         tx_reader.start()

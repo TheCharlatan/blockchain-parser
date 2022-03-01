@@ -48,8 +48,8 @@ if __name__ == "__main__":
     database = Database(args.database)
 
     # Parse the blockchains
-    # bitcoin_parser.parse_blockchain(database)
-    monero_parser.parse_blockchain(database)
+    bitcoin_parser.parse_blockchain(database)
+    # monero_parser.parse_blockchain(database)
 
     # Retrieve and prine some results
     results = database.get_data(DATATYPE.SCRIPT_SIG)

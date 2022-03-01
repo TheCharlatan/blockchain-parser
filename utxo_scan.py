@@ -271,4 +271,54 @@ def parse_ldb(
     db.close()
 
 
-# parse_ldb(None)
+class UTXOIterator:
+    def __init__(
+        self,
+        btc_dir="/home/drgrid/.bitcoin/testnet3",
+        fin_name="chainstate",
+    ):
+        """
+        Parsed data from the chainstate LevelDB and stores it in a output file.
+        :param btc_dir: Path of the bitcoin data directory
+        :type btc_dir: str
+        :param fin_name: Name of the LevelDB folder (chainstate by default)
+        :type fin_name: str
+        :return: None
+        :rtype: None
+        """
+
+        # The UTXOs in the database are prefixed with a 'C'
+        prefix = b"C"
+        # Open the LevelDB
+        db = plyvel.DB(
+            btc_dir + "/" + fin_name, compression=None
+        )  # Change with path to chainstate
+
+        # Load obfuscation key (if it exists)
+        o_key = db.get((unhexlify("0e00") + b"obfuscate_key"))
+
+        # If the key exists, the leading byte indicates the length of the key (8 byte by default). If there is no key,
+        # 8-byte zeros are used (since the key will be XORed with the given values).
+        if o_key is not None:
+            o_key = hexlify(o_key)[2:]
+
+        # For every UTXO (identified with a leading 'c'), the key (tx_id) and the value (encoded utxo) is displayed.
+        # UTXOs are obfuscated using the obfuscation key (o_key), in order to get them non-obfuscated, a XOR between the
+        # value and the key (concatenated until the length of the value is reached) if performed).
+
+        self._o_key = o_key
+        self._prefix = prefix
+        self._iterator = db.iterator(prefix=prefix)
+
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        key, o_value = self._iterator.__next__()
+        key = hexlify(key)
+        if self._o_key is not None:
+            value = deobfuscate_value(self._o_key, hexlify(o_value))
+        else:
+            value = hexlify(o_value)
+
+        return decode_utxo(value, key)

@@ -1,10 +1,52 @@
+import pickle
+from re import U
+import threading
 from blockchain_parser.blockchain import Blockchain
+import zmq
 from database import COIN, DATATYPE, Database
 from parser import CoinParser
 import bitcoin.rpc
 from typing import Optional
 import os
-from utxo_scan import parse_ldb
+from utxo_scan import UTXOIterator, parse_ldb
+
+class DatabaseWriter(threading.Thread):
+    """DatabaseWriter acts as a worker thread for writing to the sql database
+    and receives from a zmq socket"""
+
+    def __init__(self, database: Database, receiver: zmq.Socket, coin: COIN):
+        """
+        :param database: Database to be written into
+        :type database: Database
+        :param receiver: Receives parsed extra bytes and monero transaction indices
+        :type receiver: zmq.Socket
+        :param coin: Some monero coin
+        :type coin: Coin"""
+        self._db = database
+        self._receiver = receiver
+        self._coin = coin
+        threading.Thread.__init__(self)
+
+    def run(self):
+        records = []
+        while True:
+            [data, txid, data_type, block_height, output_index] = pickle.loads(self._receiver.recv())
+
+            records.append((
+                data,
+                txid,
+                self._coin.value,
+                data_type.value,
+                block_height,
+                output_index
+            ))
+
+            if len(records) > 500:
+                self._db.insert_records(records)
+                # print(self._coin.value + " written")
+                records = []
+
+
 
 opcode_counters = {
     bitcoin.core.script.OP_1: 1,
@@ -83,6 +125,8 @@ def is_pubkeys(pubkeys: bytes, number_of_keys: int) -> bool:
         return False
     pos = 0
     for i in range(number_of_keys):
+        if len(pubkeys) <= pos:
+            return False
         if pubkeys[pos] == 0x02 or pubkeys[pos] == 0x03:
             pos += 34
         elif pubkeys[pos] == 0x04:
@@ -336,6 +380,19 @@ class BitcoinParser(CoinParser):
         tx_inputs = 0
         ignored_tx_outputs = 0
         tx_outputs = 0
+
+        context = zmq.Context()
+        database_event_sender = context.socket(zmq.PAIR)
+        database_event_receiver = context.socket(zmq.PAIR)
+        database_event_sender.bind("inproc://bitcoin_dbbridge")
+        database_event_receiver.connect("inproc://bitcoin_dbbridge")
+
+        writer = DatabaseWriter(database, database_event_receiver, self.coin)
+        writer.start()
+
+        print("commencing bitcoin parsing of " + self.blockchain_path + "/blocks/index")
+
+
         for block in blockchain.get_ordered_blocks(
             os.path.expanduser(self.blockchain_path + "/blocks/index"), end=2100000
         ):
@@ -366,15 +423,7 @@ class BitcoinParser(CoinParser):
                         ignored_tx_inputs += 1
                         continue
 
-                    if database is not None:
-                        database.insert_record(
-                            input.scriptSig,
-                            tx.txid,
-                            self.coin,
-                            DATATYPE.SCRIPT_SIG,
-                            block.height,
-                            input_index,
-                        )
+                    database_event_sender.send(pickle.dumps([input.scriptSig, tx.txid, DATATYPE.SCRIPT_SIG, block.height, input_index]))
 
                 for (output_index, output) in enumerate(c_tx.vout):
                     tx_outputs += 1
@@ -408,27 +457,17 @@ class BitcoinParser(CoinParser):
                         continue
 
                     # print("nonstandard output:", output)
+                    database_event_sender.send(pickle.dumps([output.scriptPubKey, tx.txid, DATATYPE.SCRIPT_PUBKEY, block.height, output_index]))
 
-                    if database is not None:
-                        database.insert_record(
-                            output.scriptPubKey,
-                            tx.txid,
-                            self.coin,
-                            DATATYPE.SCRIPT_PUBKEY,
-                            block.height,
-                            output_index,
-                        )
+            if height % 500 == 0:
+                print("parsed until height:", height, tx_inputs, ignored_tx_inputs, tx_outputs, ignored_tx_outputs)
 
-        print(
-            height,
-            tx_index,
-            input_index,
-            total_txs,
-            tx_inputs,
-            ignored_tx_inputs,
-            len(input.scriptSig),
-            input.scriptSig,
-        )
-        print(height, tx_outputs, ignored_tx_outputs)
 
-        parse_ldb(database, coin=self.coin, btc_dir=self.blockchain_path)
+        print("Completed blockchain parsing, commencing UTXO parsing")
+
+        utxo_counter = 0
+        for utxo in UTXOIterator():
+            utxo_counter += 1
+            if (utxo_counter % 1000 == 0):
+                print(utxo_counter)
+            database_event_sender.send(pickle.dumps([utxo["out"]["data"], utxo["tx_id"], DATATYPE.SCRIPT_PUBKEY, utxo["height"], utxo["index"]]))
