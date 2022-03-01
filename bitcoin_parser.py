@@ -466,7 +466,7 @@ class BitcoinParser(CoinParser):
         print("Completed blockchain parsing, commencing UTXO parsing")
 
         utxo_counter = 0
-        for utxo in UTXOIterator():
+        for utxo in UTXOIterator(path=self.blockchain_path):
             utxo_counter += 1
             if (utxo_counter % 1000 == 0):
                 print(utxo_counter)

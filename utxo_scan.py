@@ -274,7 +274,7 @@ def parse_ldb(
 class UTXOIterator:
     def __init__(
         self,
-        btc_dir="/home/drgrid/.bitcoin/testnet3",
+        path="/home/drgrid/.bitcoin/testnet3",
         fin_name="chainstate",
     ):
         """
@@ -291,7 +291,7 @@ class UTXOIterator:
         prefix = b"C"
         # Open the LevelDB
         db = plyvel.DB(
-            btc_dir + "/" + fin_name, compression=None
+            path + "/" + fin_name, compression=None
         )  # Change with path to chainstate
 
         # Load obfuscation key (if it exists)
