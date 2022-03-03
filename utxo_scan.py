@@ -69,7 +69,7 @@ def b128_decode(data):
     n = 0
     i = 0
     while True:
-        d = int(data[2 * i : 2 * i + 2], 16)
+        d = int(data[2 * i: 2 * i + 2], 16)
         n = n << 7 | d & 0x7F
         if d & 0x80:
             n += 1
@@ -88,7 +88,7 @@ def parse_b128(utxo, offset=0):
     :rtype: hex str, int
     """
 
-    data = utxo[offset : offset + 2]
+    data = utxo[offset: offset + 2]
     offset += 2
     more_bytes = (
         int(data, 16) & 0x80
@@ -96,8 +96,8 @@ def parse_b128(utxo, offset=0):
     # indicating that there is an additional byte following the one being analyzed. If bit 128 of the byte being read is
     # not set, we are analyzing the last byte, otherwise, we should continue reading.
     while more_bytes:
-        data += utxo[offset : offset + 2]
-        more_bytes = int(utxo[offset : offset + 2], 16) & 0x80
+        data += utxo[offset: offset + 2]
+        more_bytes = int(utxo[offset: offset + 2], 16) & 0x80
         offset += 2
 
     return data, offset
@@ -213,7 +213,7 @@ def deobfuscate_value(obfuscation_key, value):
 def parse_ldb(
     database: Optional[Database],
     coin=COIN.BITCOIN_MAINNET,
-    btc_dir="/home/drgrid/.bitcoin/testnet3",
+    btc_dir="/home/drgrid/.bitcoin",
     fin_name="chainstate",
 ):
     """
@@ -274,7 +274,7 @@ def parse_ldb(
 class UTXOIterator:
     def __init__(
         self,
-        path="/home/drgrid/.bitcoin/testnet3",
+        path="/home/drgrid/.bitcoin",
         fin_name="chainstate",
     ):
         """
@@ -312,7 +312,7 @@ class UTXOIterator:
 
     def __iter__(self):
         return self
-    
+
     def __next__(self):
         key, o_value = self._iterator.__next__()
         key = hexlify(key)

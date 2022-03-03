@@ -15,6 +15,25 @@ class COIN(enum.Enum):
     ETHEREUM_MAINNET = "ethereum_mainnet"
 
 
+def coinStringToCoin(name: str) -> COIN:
+    if name == "bitcoin_mainnet":
+        return COIN.BITCOIN_MAINNET
+    elif name == "bitcoin_testnet3":
+        return COIN.BITCOIN_TESTNET3
+    elif name == "bitcoin_regtest":
+        return COIN.BITCOIN_REGTEST
+    elif name == "monero_mainnet":
+        return COIN.MONERO_MAINNET
+    elif name == "monero_stagenet":
+        return COIN.MONERO_STAGENET
+    elif name == "monero_testnet":
+        return COIN.MONERO_TESTNET
+    elif name == "ethereum_mainnet":
+        return COIN.ETHEREUM_MAINNET
+    else:
+        raise "invalid coin name"
+
+
 class DATATYPE(enum.Enum):
     """Transaction Data Fields"""
 
@@ -67,9 +86,9 @@ class Database:
         cursor = conn.cursor()
         try:
             cursor.executemany(
-                    "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
-                    records
-                )
+                "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
+                records
+            )
         except sqlite3.IntegrityError:
             return
         except BaseException:
@@ -78,7 +97,6 @@ class Database:
         cursor.close()
         conn.commit()
         conn.close()
-
 
     def insert_record(
         self,
@@ -119,6 +137,7 @@ class Database:
     def get_data(self, data_type: DATATYPE) -> List[bytes]:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
-        c.execute("SELECT data FROM cryptoData WHERE data_type=?", (data_type.value,))
+        c.execute("SELECT data FROM cryptoData WHERE data_type=?",
+                  (data_type.value,))
         results = c.fetchall()
         return results

@@ -4,8 +4,10 @@ import detectors
 import bitcoin.rpc
 import binascii
 import argparse
+from ethereum_parser import EthereumParser
 
 from monero_parser import MoneroParser
+from parser import CoinParser
 
 
 def unhexlify_str(h: str) -> bytes:
@@ -20,15 +22,21 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-m",
-        "--monero-database",
+        "--monero-path",
         default="/home/drgrid/.bitmonero/lmdb",
-        help="path to the monero block files",
+        help="path to the monero data directory",
     )
     parser.add_argument(
         "-b",
-        "--bitcoin-database",
-        default="/home/drgrid/.bitcoin/testnet3",
-        help="path to the bitcoin block files",
+        "--bitcoin-path",
+        default="/home/drgrid/.bitcoin",
+        help="path to the bitcoin data directory",
+    )
+    parser.add_argument(
+        "-e",
+        "--ethereum-path",
+        default="/home/drgrid/.ethereum",
+        help="path to the ethereum data directory",
     )
     parser.add_argument(
         "-d",
@@ -36,19 +44,42 @@ if __name__ == "__main__":
         default="test.db",
         help="name of the database used to store results",
     )
+    parser.add_argument(
+        "-c",
+        "--coin",
+        default="bitcoin_mainnet",
+        help="""Coin to target. Only single targets are allowed, valid targets are: \n
+            bitcoin_mainnet \n
+            bitcoin_testnet3 \n
+            bitcoin_regtest \n
+            monero_mainnet \n
+            monero_stagnet \n
+            monero_testnet \n
+            ethereum_mainnet \n
+            """
+    )
 
     # Parse the command line arguments
     args = parser.parse_args()
 
-    # Create Bitcoin and Monero parsers
-    monero_parser = MoneroParser(args.monero_database, COIN.MONERO_STAGENET)
-    bitcoin_parser = BitcoinParser(args.bitcoin_database, COIN.BITCOIN_REGTEST)
+    # Create a parser
+    parser = CoinParser
+    if "bitcoin" in args.coin:
+        parser = BitcoinParser(
+            args.bitcoin_path, COIN.BITCOIN_REGTEST)
+    elif "ethereum" in args.coin:
+        parser = EthereumParser(
+            args.ethereum_path, COIN.ETHEREUM_MAINNET)
+    elif "monero" in args.coin:
+        monero_parser = MoneroParser(args.monero_path, COIN.MONERO_STAGENET)
+    else:
+        raise "invalid coin argument"
 
     # Create a database handler
     database = Database(args.database)
 
     # Parse the blockchains
-    bitcoin_parser.parse_blockchain(database)
+    parser.parse_blockchain(database)
     # monero_parser.parse_blockchain(database)
 
     # Retrieve and prine some results

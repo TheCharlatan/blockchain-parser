@@ -153,7 +153,7 @@ class FreezerTable:
 
         # Slice up the data and decompress
         for (i, diskSize) in enumerate(sizes):
-            item = diskData[offset : offset + diskSize]
+            item = diskData[offset: offset + diskSize]
             offset += diskSize
             decompressedSize = diskSize
             data: bytes
@@ -226,7 +226,8 @@ class FreezerTable:
                 # About to break out due ot byte limit being exceeded. We don't
                 # read this last item, but we need to do the deferred reads now.
                 if unreadSize > 0:
-                    readData(secondIndex.filenum, readStart, unreadSize, output)
+                    readData(secondIndex.filenum,
+                             readStart, unreadSize, output)
                     outputSize += unreadSize
                 break
 
