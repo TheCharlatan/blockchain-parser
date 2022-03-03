@@ -45,8 +45,8 @@ class EthereumParser(CoinParser):
         :param coin: One of the Bitcoin compatible coins.
         :type coin: COIN
         """
-        self.chaindata_path = chaindata_path
-        self.ancient_chaindata_path = chaindata_path + "/ancient"
+        self.chaindata_path = chaindata_path + "/geth/chaindata"
+        self.ancient_chaindata_path = self.chaindata_path + "/ancient"
         self.coin = coin
 
     def parse_blockchain(self, database: Optional[Database]):
@@ -77,10 +77,3 @@ class EthereumParser(CoinParser):
         ):
             if len(header.Extra) > 0:
                 print(height, header.Extra)
-
-
-chaindata_path = "/home/drgrid/.ethereum/geth/chaindata"
-ancient_chaindata_path = "/home/drgrid/.ethereum/geth/chaindata/ancient"
-
-ethereum_parser = EthereumParser(chaindata_path, COIN.ETHEREUM_MAINNET)
-ethereum_parser.parse_blockchain(None)

@@ -1,3 +1,4 @@
+from tkinter import N
 from bitcoin_parser import BitcoinParser
 from database import COIN, DATATYPE, Database
 import detectors
@@ -12,6 +13,33 @@ from parser import CoinParser
 
 def unhexlify_str(h: str) -> bytes:
     return binascii.unhexlify(h.encode("ascii"))
+
+
+def parse(coin: str, coin_path: str, database: str):
+    # Create a parser
+    parser = CoinParser
+    if "bitcoin" in coin:
+        parser = BitcoinParser(
+            coin_path, COIN.BITCOIN_REGTEST)
+    elif "ethereum" in coin:
+        parser = EthereumParser(
+            coin_path, COIN.ETHEREUM_MAINNET)
+    elif "monero" in coin:
+        parser = MoneroParser(coin_path, COIN.MONERO_STAGENET)
+    else:
+        raise "invalid coin argument"
+
+    # Create a database handler
+    database = Database(database)
+
+    # Parse the blockchains
+    parser.parse_blockchain(database)
+    return
+
+def analyze(coin: str, database: str):
+    return
+
+
 
 
 if __name__ == "__main__":
@@ -55,40 +83,39 @@ if __name__ == "__main__":
             monero_mainnet \n
             monero_stagnet \n
             monero_testnet \n
-            ethereum_mainnet \n
+            ethereum_mainnet
+            """
+    )
+    parser.add_argument(
+        "-m",
+        "--mode",
+        default="parser",
+        help="""Mode of operation, either parses or analyzes data. Valid arguments are: \n
+            parse \n
+            analyze \n
+            view
             """
     )
 
     # Parse the command line arguments
     args = parser.parse_args()
 
-    # Create a parser
-    parser = CoinParser
-    if "bitcoin" in args.coin:
-        parser = BitcoinParser(
-            args.bitcoin_path, COIN.BITCOIN_REGTEST)
-    elif "ethereum" in args.coin:
-        parser = EthereumParser(
-            args.ethereum_path, COIN.ETHEREUM_MAINNET)
-    elif "monero" in args.coin:
-        monero_parser = MoneroParser(args.monero_path, COIN.MONERO_STAGENET)
+    if args.mode == "parse":
+        parse(args.coin, args.coin_path, args.database)
+    elif args.mode == "analyze":
+        analyze(args.coin, args.database)
+    elif args.mode == "view":
+        raise "view mode not implemented yet"
     else:
-        raise "invalid coin argument"
-
-    # Create a database handler
-    database = Database(args.database)
-
-    # Parse the blockchains
-    parser.parse_blockchain(database)
-    # monero_parser.parse_blockchain(database)
+        raise "require a mode to run in"
 
     # Retrieve and prine some results
-    results = database.get_data(DATATYPE.SCRIPT_SIG)
-    for result in results:
-        for potential_string in result:
-            print(detectors.gnu_strings(potential_string))
-            print(
-                detectors.bitcoin_find_file_with_imghdr(
-                    bitcoin.core.CScript(potential_string)
-                )
-            )
+    # results = database.get_data(DATATYPE.SCRIPT_SIG)
+    # for result in results:
+    #     for potential_string in result:
+    #         print(detectors.gnu_strings(potential_string))
+    #         print(
+    #             detectors.bitcoin_find_file_with_imghdr(
+    #                 bitcoin.core.CScript(potential_string)
+    #             
+    #         )
