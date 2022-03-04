@@ -30,17 +30,17 @@ class EthLevelDB:
     def get_body_by_height(self, number: int) -> Optional[Body]:
         header = self.get_hash_by_height(number)
         if header is None:
-            return
-        raw_body = self.db.get(block_body_key(number))
+            return None
+        raw_body = self.db.get(block_body_key(number, header))
         if raw_body is None:
-            return
+            return None
         return rlp.decode(raw_body, Body)
 
     def get_header_by_height(self, number: int) -> Optional[Header]:
         header_hash = self.get_hash_by_height(number)
         if header_hash is None:
-            return
-        raw_header = self.db.get(header_key(number))
+            return None
+        raw_header = self.db.get(header_key(number, header_hash))
         if raw_header is None:
-            return
+            return None
         return rlp.decode(raw_header, Header)

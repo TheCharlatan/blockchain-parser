@@ -27,7 +27,7 @@ class DatabaseWriter(threading.Thread):
         self._coin = coin
         threading.Thread.__init__(self)
 
-    def run(self):
+    def run(self) -> None:
         records = []
         while True:
             [data, txid, data_type, block_height, output_index] = pickle.loads(self._receiver.recv())
@@ -367,7 +367,7 @@ class BitcoinParser(CoinParser):
         self.blockchain_path = blockchain_path
         self.coin = coin
 
-    def parse_blockchain(self, database: Optional[Database]):
+    def parse_blockchain(self, database: Database) -> None:
         """Parse the blockchain with the previously constructed options
         :param database: Database to be written into.
         :type database: Database

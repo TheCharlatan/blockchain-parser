@@ -7,14 +7,13 @@ from typing import Callable
 import magic
 import imghdr
 import bitcoin.rpc
-import asyncio
 
 import zmq
 
 from database import COIN, Database, DetectorPayload, DetectedDataPayload
 
 
-def detector_worker(sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload], detector_payload: DetectorPayload):
+def detector_worker(sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload], detector_payload: DetectorPayload) -> None:
     detected_data = detector(detector_payload)
     if detected_data.data_length > 1:
         sender.send(pickle.dumps(detected_data))
@@ -27,7 +26,7 @@ class DetectorInstance(threading.Thread):
         self._detector = detector
         threading.Thread.__init__(self)
  
-    def run(self):
+    def run(self) -> None:
         executor = ThreadPoolExecutor(100)
         while True:
             detector_payload: DetectedDataPayload = pickle.loads(self._receiver.recv())
@@ -40,10 +39,10 @@ class DetectedDataWriter(threading.Thread):
         self._database = database
         threading.Thread.__init__(self)
 
-    def run(self):
+    def run(self) -> None:
         while True:
             detected_data_payload: DetectedDataPayload = pickle.loads(self._receiver.recv())
-            self._database.insert_detected_ascii_records(detected_data_payload)
+            self._database.insert_detected_ascii_records([detected_data_payload])
 
 
 def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
@@ -64,31 +63,11 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
     )
+    assert process.stdin is not None
     process.stdin.write(payload.data)
     output = process.communicate()[0]
     length = len(output.decode("ascii").strip())
     return DetectedDataPayload(payload.txid, payload.data_type, payload.extra_index, length)
-
-#async def gnu_strings_async(detector_payload: DetectorPayload, min: int = 10) -> str:
-#    """Find and return a string with the specified minimum size using gnu strings
-#    :param bytestring: Bytes to be examined.
-#    :type bytestring: bytes
-#    :param min: Minimum length of the to be detected string.
-#    :type min: int
-#    :return: A string of minimum length min as detected in the bytestring.
-#    :rtype: str
-#    """
-#
-#    cmd = "strings -n {}".format(min)
-#    process = await asyncio.create_subprocess_shell(
-#        cmd,
-#        stdout=asyncio.subprocess.PIPE,
-#        stderr=asyncio.subprocess.STDOUT,
-#        stdin=asyncio.subprocess.PIPE,
-#    )
-#    # process.stdin.write(DetectorPayload.data)
-#    output = await process.communicate(input=DetectorPayload.data)[0]
-#    return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(output.decode("ascii").strip()))
 
 
 def find_file_with_magic(bytestring: bytes) -> str:
@@ -139,6 +118,7 @@ def native_strings(bytestring: bytes, min: int = 10) -> str:
     :rtype: str
     """
 
+    result = ""
     for c in bytestring:
         if chr(c) in string.printable:
             result += chr(c)
@@ -196,7 +176,7 @@ class Detector:
         self._coin = coin
         self._database = database
 
-    def analyze(self):
+    def analyze(self) -> None:
         context = zmq.Context()
 
         detector_event_sender = context.socket(zmq.PAIR)

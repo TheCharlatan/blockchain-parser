@@ -34,11 +34,11 @@ class IndexEntry:
         offset = len(b)
         return b + self.filenum.to_bytes(2, "big") + self.offset.to_bytes(4, "big")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"IndexEntry(filenum={self.filenum} offset={self.offset})"
 
 
-def bounds(start: IndexEntry, end: IndexEntry) -> bytes:
+def bounds(start: IndexEntry, end: IndexEntry) -> Tuple[int, int, int]:
     """ Bounds returns the start and end offsets and the file number of where to read 
         the data item marked by the two index entries. The two entries are assumed to be sequential
     """
@@ -92,8 +92,7 @@ class FreezerTable:
         self.readonly = readonly
         self.repair()
 
-    def repair(self):
-        buffer: bytes
+    def repair(self) -> None:
         # Ensure the index i s a multiple of indexEntrySize bytes
         if os.stat(self.index).st_size % indexEntrySize:
             raise Exception(
@@ -194,7 +193,7 @@ class FreezerTable:
         output: bytearray = bytearray(b"")
         outputSize = 0
 
-        def readData(fileId: int, start: int, length: int, output: bytearray):
+        def readData(fileId: int, start: int, length: int, output: bytearray) -> None:
             dataFile = self.files[fileId]
             if dataFile is None:
                 raise Exception("missing data file %d", fileId)

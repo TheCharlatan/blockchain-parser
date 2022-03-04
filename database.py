@@ -1,7 +1,7 @@
 import enum
 import pickle
 import sqlite3
-from typing import NamedTuple, List
+from typing import Iterable, NamedTuple, List
 import zmq
 
 
@@ -33,7 +33,7 @@ def coinStringToCoin(name: str) -> COIN:
     elif name == "ethereum_mainnet":
         return COIN.ETHEREUM_MAINNET
     else:
-        raise "invalid coin name"
+        raise BaseException("invalid coin name")
 
 
 class DATATYPE(enum.Enum):
@@ -51,6 +51,28 @@ class LABEL(enum.Enum):
     OP_RETURN = "opreturn"
     TEXT = "text"
     IMAGE = "image"
+
+class DetectorPayload(NamedTuple):
+    txid: str
+    data_type: str
+    extra_index: int
+    data: bytes
+
+
+class DetectedDataPayload(NamedTuple):
+    txid: str
+    data_type: str
+    extra_index: int
+    data_length: int
+
+
+class CryptoDataRecord(NamedTuple):
+    data: bytes
+    txid: str
+    coin: str
+    data_type: str
+    block_height: int
+    extra_index: int
 
 
 class Database:
@@ -98,8 +120,8 @@ class Database:
 
     def insert_records(
         self,
-        records,
-    ):
+        records: Iterable[Iterable],
+    ) -> None:
         conn = sqlite3.connect(self.name)
         try:
             conn.executemany(
@@ -140,7 +162,7 @@ class Database:
     def get_records(self, txid: str, extra_index: int) -> None:
         conn = sqlite3.connect(self.name)
         """Print all the records in the database."""
-        c = self.conn.cursor()
+        c = conn.cursor()
         c.execute(
             "SELECT * FROM  cryptoData WHERE txid=? AND extra_index=?",
             (txid, extra_index),
@@ -160,8 +182,8 @@ class Database:
 
     def insert_detected_ascii_records(
         self,
-        records,
-    ):
+        records : Iterable[DetectedDataPayload],
+    ) -> None:
         conn = sqlite3.connect(self.name)
         try:
             conn.executemany(
@@ -178,23 +200,9 @@ class Database:
         conn.close()
 
 
-    def run_detection(self, detector_event_sender: zmq.Socket):
+    def run_detection(self, detector_event_sender: zmq.Socket) -> None:
         conn = sqlite3.connect(self.name)
         for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
             detector_event_sender.send(pickle.dumps(DetectorPayload(txid, data_type, extra_index, data)))
         print("\n\n\nCompleted detection!\n\n\n")
-
-
-class DetectorPayload(NamedTuple):
-    txid: str
-    data_type: str
-    extra_index: int
-    data: bytes
-
-
-class DetectedDataPayload(NamedTuple):
-    txid: str
-    data_type: str
-    extra_index: int
-    data_length: int
 

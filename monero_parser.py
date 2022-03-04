@@ -29,7 +29,7 @@ class TxParser(threading.Thread):
         self._sender = sender
         threading.Thread.__init__(self)
     
-    def run(self):
+    def run(self) -> None:
         loop = asyncio.new_event_loop()
         while True:
             print("parsing monero transactions...")

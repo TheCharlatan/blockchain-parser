@@ -1,3 +1,4 @@
+from typing import Union
 from ethereum_freezer_tables import FreezerBodiesTable, FreezerHeadersTable
 from ethereum_leveldb_tables import EthLevelDB
 from ethereum_rlp import Body, Header
@@ -11,17 +12,14 @@ class ParseEthereumBlockHeaders:
 
     def get_header(self, number: int) -> Header:
         try:
-            header = self.table.get_header_by_height(number)
+            header: Union[Header, None] = self.table.get_header_by_height(number)
         except:
             header = self.eth_leveldb.get_header_by_height(number)
         if header is None:
             raise Exception(f"header not found for block height: {number}")
         return header
 
-    def __iter__(self):
-        return self
-
-    def __next__(self):
+    def __next__(self) -> Header:
         try:
             header = self.get_header(self.value + 1)
         except:
@@ -38,17 +36,14 @@ class ParseEthereumBlockBodies:
 
     def get_body(self, number: int) -> Body:
         try:
-            body = self.table.get_body_by_height(number)
+            body: Union[Body, None] = self.table.get_body_by_height(number)
         except:
             body = self.eth_leveldb.get_header_by_height(number)
         if body is None:
             raise Exception(f"body not found for block height: {number}")
         return body
 
-    def __iter__(self):
-        return self
-
-    def __next__(self):
+    def __next__(self) -> Body:
         try:
             body = self.get_body(self.value + 1)
         except:

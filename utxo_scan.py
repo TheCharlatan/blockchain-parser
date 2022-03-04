@@ -274,9 +274,9 @@ def parse_ldb(
 class UTXOIterator:
     def __init__(
         self,
-        path="/home/drgrid/.bitcoin",
-        fin_name="chainstate",
-    ):
+        path: str="/home/drgrid/.bitcoin",
+        fin_name: str="chainstate",
+    ) -> None:
         """
         Parsed data from the chainstate LevelDB and stores it in a output file.
         :param btc_dir: Path of the bitcoin data directory
@@ -309,9 +309,6 @@ class UTXOIterator:
         self._o_key = o_key
         self._prefix = prefix
         self._iterator = db.iterator(prefix=prefix)
-
-    def __iter__(self):
-        return self
 
     def __next__(self):
         key, o_value = self._iterator.__next__()

@@ -49,7 +49,7 @@ class EthereumParser(CoinParser):
         self.ancient_chaindata_path = self.chaindata_path + "/ancient"
         self.coin = coin
 
-    def parse_blockchain(self, database: Optional[Database]):
+    def parse_blockchain(self, database: Optional[Database]) -> None:
         for height, block_body in enumerate(
             ParseEthereumBlockBodies(self.ancient_chaindata_path, self.chaindata_path)
         ):
