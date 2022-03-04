@@ -182,6 +182,7 @@ class Database:
         conn = sqlite3.connect(self.name)
         for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
             detector_event_sender.send(pickle.dumps(DetectorPayload(txid, data_type, extra_index, data)))
+        print("\n\n\nCompleted detection!\n\n\n")
 
 
 class DetectorPayload(NamedTuple):

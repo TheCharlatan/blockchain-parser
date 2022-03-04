@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import pickle
 import string
 import subprocess
@@ -12,6 +13,13 @@ import zmq
 
 from database import COIN, Database, DetectorPayload, DetectedDataPayload
 
+
+def detector_worker(sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload], detector_payload: DetectorPayload):
+    detected_data = detector(detector_payload)
+    if detected_data.data_length > 1:
+        sender.send(pickle.dumps(detected_data))
+
+
 class DetectorInstance(threading.Thread):
     def __init__(self, receiver: zmq.Socket, sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload]):
         self._receiver = receiver
@@ -20,27 +28,10 @@ class DetectorInstance(threading.Thread):
         threading.Thread.__init__(self)
  
     def run(self):
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-        policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
-        watcher.attach_loop(loop)
-        policy.set_child_watcher(watcher)
-
-        coroutines = []
-        results = []
+        executor = ThreadPoolExecutor(100)
         while True:
-            detector_payload: DetectorPayload = pickle.loads(self._receiver.recv())
-            coroutines.append(self._detector(detector_payload))
-            if len(coroutines) >= 10:
-                print("running collected coroutines")
-                # results = loop.run_until_complete(asyncio.gather(*coroutines))
-                results = loop.run_until_complete(self._detector(detector_payload))
-                print(results)
-                self._sender.send(pickle.dumps(results))
-                results = []
-                coroutines = []
+            detector_payload: DetectedDataPayload = pickle.loads(self._receiver.recv())
+            executor.submit(detector_worker, (self._sender, self._detector, detector_payload))
 
 
 class DetectedDataWriter(threading.Thread):
@@ -53,9 +44,9 @@ class DetectedDataWriter(threading.Thread):
         while True:
             detected_data_payload: DetectedDataPayload = pickle.loads(self._receiver.recv())
             self._database.insert_detected_ascii_records(detected_data_payload)
-            
 
-def gnu_strings(bytestring: bytes, min: int = 10) -> str:
+
+def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
     """Find and return a string with the specified minimum size using gnu strings
     :param bytestring: Bytes to be examined.
     :type bytestring: bytes
@@ -73,30 +64,31 @@ def gnu_strings(bytestring: bytes, min: int = 10) -> str:
         stderr=subprocess.STDOUT,
         stdin=subprocess.PIPE,
     )
-    process.stdin.write(bytestring)
+    process.stdin.write(payload.data)
     output = process.communicate()[0]
-    return output.decode("ascii").strip()
+    length = len(output.decode("ascii").strip())
+    return DetectedDataPayload(payload.txid, payload.data_type, payload.extra_index, length)
 
-async def gnu_strings_async(detector_payload: DetectorPayload, min: int = 10) -> str:
-    """Find and return a string with the specified minimum size using gnu strings
-    :param bytestring: Bytes to be examined.
-    :type bytestring: bytes
-    :param min: Minimum length of the to be detected string.
-    :type min: int
-    :return: A string of minimum length min as detected in the bytestring.
-    :rtype: str
-    """
-
-    cmd = "strings -n {}".format(min)
-    process = await asyncio.create_subprocess_shell(
-        cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
-        stdin=asyncio.subprocess.PIPE,
-    )
-    # process.stdin.write(DetectorPayload.data)
-    output = await process.communicate(input=DetectorPayload.data)[0]
-    return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(output.decode("ascii").strip()))
+#async def gnu_strings_async(detector_payload: DetectorPayload, min: int = 10) -> str:
+#    """Find and return a string with the specified minimum size using gnu strings
+#    :param bytestring: Bytes to be examined.
+#    :type bytestring: bytes
+#    :param min: Minimum length of the to be detected string.
+#    :type min: int
+#    :return: A string of minimum length min as detected in the bytestring.
+#    :rtype: str
+#    """
+#
+#    cmd = "strings -n {}".format(min)
+#    process = await asyncio.create_subprocess_shell(
+#        cmd,
+#        stdout=asyncio.subprocess.PIPE,
+#        stderr=asyncio.subprocess.STDOUT,
+#        stdin=asyncio.subprocess.PIPE,
+#    )
+#    # process.stdin.write(DetectorPayload.data)
+#    output = await process.communicate(input=DetectorPayload.data)[0]
+#    return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(output.decode("ascii").strip()))
 
 
 def find_file_with_magic(bytestring: bytes) -> str:
@@ -217,7 +209,7 @@ class Detector:
         database_event_sender.bind("inproc://database_bridge")
         database_event_receiver.connect("inproc://database_bridge")
 
-        detector_instance = DetectorInstance(detector_event_receiver, database_event_sender, gnu_strings_async)
+        detector_instance = DetectorInstance(detector_event_receiver, database_event_sender, gnu_strings)
         detector_instance.start()
         writer_instance = DetectedDataWriter(database_event_receiver, self._database)
         writer_instance.start()
