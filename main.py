@@ -1,11 +1,10 @@
 from tkinter import N
 from bitcoin_parser import BitcoinParser
-from database import COIN, DATATYPE, Database
-import detectors
-import bitcoin.rpc
+from database import COIN, DATATYPE, Database, coinStringToCoin
 import binascii
 import argparse
 from ethereum_parser import EthereumParser
+from detectors import Detector
 
 from monero_parser import MoneroParser
 from parser import CoinParser
@@ -37,9 +36,11 @@ def parse(coin: str, coin_path: str, database: str):
     return
 
 def analyze(coin: str, database: str):
+    coin = coinStringToCoin(coin)
+    database = Database(database)
+    analyzer = Detector(coin, database)
+    analyzer.analyze()
     return
-
-
 
 
 if __name__ == "__main__":
@@ -49,22 +50,14 @@ if __name__ == "__main__":
         description="Tool for parsing and analysing various blockchain data",
     )
     parser.add_argument(
-        "-m",
-        "--monero-path",
-        default="/home/drgrid/.bitmonero/lmdb",
-        help="path to the monero data directory",
-    )
-    parser.add_argument(
-        "-b",
-        "--bitcoin-path",
+        "-i",
+        "--data-dir",
         default="/home/drgrid/.bitcoin",
-        help="path to the bitcoin data directory",
-    )
-    parser.add_argument(
-        "-e",
-        "--ethereum-path",
-        default="/home/drgrid/.ethereum",
-        help="path to the ethereum data directory",
+        help = """Path the coin data directory, e.g. 
+            /home/drgrid.ethereum | 
+            home/drgrid/.bitmonero | 
+            /home/drgrid/.bitcoin
+            """
     )
     parser.add_argument(
         "-d",
@@ -77,22 +70,22 @@ if __name__ == "__main__":
         "--coin",
         default="bitcoin_mainnet",
         help="""Coin to target. Only single targets are allowed, valid targets are: \n
-            bitcoin_mainnet \n
-            bitcoin_testnet3 \n
-            bitcoin_regtest \n
-            monero_mainnet \n
-            monero_stagnet \n
-            monero_testnet \n
+            bitcoin_mainnet   |
+            bitcoin_testnet3   |
+            bitcoin_regtest   |
+            monero_mainnet   |
+            monero_stagnet   |
+            monero_testnet   |
             ethereum_mainnet
             """
     )
     parser.add_argument(
-        "-m",
+        "-o",
         "--mode",
-        default="parser",
+        default="parse",
         help="""Mode of operation, either parses or analyzes data. Valid arguments are: \n
-            parse \n
-            analyze \n
+            parse   |
+            analyze   |
             view
             """
     )
@@ -101,7 +94,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.mode == "parse":
-        parse(args.coin, args.coin_path, args.database)
+        parse(args.coin, args.data_dir, args.database)
     elif args.mode == "analyze":
         analyze(args.coin, args.database)
     elif args.mode == "view":

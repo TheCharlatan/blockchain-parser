@@ -177,13 +177,13 @@ async def deserialize_transactions(monero_txs_raw: List[bytes]):
 class MoneroParser(CoinParser):
     def __init__(self, blockchain_path: str, coin: COIN) -> None:
         """
-        :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero/lmdb).
+        :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero).
         :type blockchain_path: str
         :param coin: One of the Monero compatible coins.
         :type coin: COIN
         """
 
-        self.blockchain_path = blockchain_path
+        self.blockchain_path = blockchain_path + "/lmdb"
         self.coin = coin
 
     def parse_blockchain(self, database: Optional[Database]):

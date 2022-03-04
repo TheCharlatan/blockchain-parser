@@ -1,6 +1,8 @@
 import enum
+import pickle
 import sqlite3
-from typing import List
+from typing import NamedTuple, List
+import zmq
 
 
 class COIN(enum.Enum):
@@ -67,13 +69,29 @@ class Database:
                 COIN TEXT NOT NULL,
                 DATA_TYPE TEXT NOT NULL,
                 BLOCK_HEIGHT INTEGER NOT NULL,
-                EXTRA_INDEX INTEGER,
+                EXTRA_INDEX INTEGER NOT NULL,
                 PRIMARY KEY (TXID, EXTRA_INDEX, DATA_TYPE),
                 UNIQUE(TXID, EXTRA_INDEX, DATA_TYPE)
             );"""
             )
 
-            print("Table successfully created")
+            print("Crypto Data Table successfully created")
+        
+        c.execute(
+            """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='asciiData' """
+        )
+        if not c.fetchone()[0] == 1:
+            c.execute(
+                """CREATE TABLE asciiData(
+                    TXID CHAR(64) NOT NULL,
+                    DATA_TYPE TEXT NOT NULL,
+                    EXTRA_INDEX INTEGER,
+                    STRING_LENGTH INTEGER NOT NULL,
+                    FOREIGN KEY(TXID, EXTRA_INDEX, DATA_TYPE) REFERENCES cryptoData(TXID, EXTRA_INDEX, DATA_TYPE)
+                );"""
+            )
+
+            print("asciiData Table successfully created")
 
         conn.commit()
         conn.close()
@@ -83,9 +101,8 @@ class Database:
         records,
     ):
         conn = sqlite3.connect(self.name)
-        cursor = conn.cursor()
         try:
-            cursor.executemany(
+            conn.executemany(
                 "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
                 records
             )
@@ -94,7 +111,6 @@ class Database:
         except BaseException:
             raise
 
-        cursor.close()
         conn.commit()
         conn.close()
 
@@ -141,3 +157,43 @@ class Database:
                   (data_type.value,))
         results = c.fetchall()
         return results
+
+    def insert_detected_ascii_records(
+        self,
+        records,
+    ):
+        conn = sqlite3.connect(self.name)
+        try:
+            conn.executemany(
+                "INSERT INTO asciiData(TXID,DATA_TYPE,EXTRA_INDEX,STRING_LENGTH) values (?,?,?,?)",
+                records
+            )
+
+        except sqlite3.IntegrityError:
+            return
+        except BaseException:
+            raise
+
+        conn.commit()
+        conn.close()
+
+
+    def run_detection(self, detector_event_sender: zmq.Socket):
+        conn = sqlite3.connect(self.name)
+        for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
+            detector_event_sender.send(pickle.dumps(DetectorPayload(txid, data_type, extra_index, data)))
+
+
+class DetectorPayload(NamedTuple):
+    txid: str
+    data_type: str
+    extra_index: int
+    data: bytes
+
+
+class DetectedDataPayload(NamedTuple):
+    txid: str
+    data_type: str
+    extra_index: int
+    data_length: int
+

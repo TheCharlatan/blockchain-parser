@@ -1,9 +1,59 @@
+import pickle
 import string
 import subprocess
+import threading
+from typing import Callable
 import magic
 import imghdr
 import bitcoin.rpc
+import asyncio
 
+import zmq
+
+from database import COIN, Database, DetectorPayload, DetectedDataPayload
+
+class DetectorInstance(threading.Thread):
+    def __init__(self, receiver: zmq.Socket, sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload]):
+        self._receiver = receiver
+        self._sender = sender
+        self._detector = detector
+        threading.Thread.__init__(self)
+ 
+    def run(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        policy = asyncio.get_event_loop_policy()
+        watcher = asyncio.SafeChildWatcher()
+        watcher.attach_loop(loop)
+        policy.set_child_watcher(watcher)
+
+        coroutines = []
+        results = []
+        while True:
+            detector_payload: DetectorPayload = pickle.loads(self._receiver.recv())
+            coroutines.append(self._detector(detector_payload))
+            if len(coroutines) >= 10:
+                print("running collected coroutines")
+                # results = loop.run_until_complete(asyncio.gather(*coroutines))
+                results = loop.run_until_complete(self._detector(detector_payload))
+                print(results)
+                self._sender.send(pickle.dumps(results))
+                results = []
+                coroutines = []
+
+
+class DetectedDataWriter(threading.Thread):
+    def __init__(self, receiver: zmq.Socket, database: Database):
+        self._receiver = receiver
+        self._database = database
+        threading.Thread.__init__(self)
+
+    def run(self):
+        while True:
+            detected_data_payload: DetectedDataPayload = pickle.loads(self._receiver.recv())
+            self._database.insert_detected_ascii_records(detected_data_payload)
+            
 
 def gnu_strings(bytestring: bytes, min: int = 10) -> str:
     """Find and return a string with the specified minimum size using gnu strings
@@ -26,6 +76,27 @@ def gnu_strings(bytestring: bytes, min: int = 10) -> str:
     process.stdin.write(bytestring)
     output = process.communicate()[0]
     return output.decode("ascii").strip()
+
+async def gnu_strings_async(detector_payload: DetectorPayload, min: int = 10) -> str:
+    """Find and return a string with the specified minimum size using gnu strings
+    :param bytestring: Bytes to be examined.
+    :type bytestring: bytes
+    :param min: Minimum length of the to be detected string.
+    :type min: int
+    :return: A string of minimum length min as detected in the bytestring.
+    :rtype: str
+    """
+
+    cmd = "strings -n {}".format(min)
+    process = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+        stdin=asyncio.subprocess.PIPE,
+    )
+    # process.stdin.write(DetectorPayload.data)
+    output = await process.communicate(input=DetectorPayload.data)[0]
+    return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(output.decode("ascii").strip()))
 
 
 def find_file_with_magic(bytestring: bytes) -> str:
@@ -126,3 +197,28 @@ def bitcoin_find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
         if res:
             return res
     return ""
+
+
+class Detector:
+    def __init__(self, coin: COIN, database: Database):
+        self._coin = coin
+        self._database = database
+
+    def analyze(self):
+        context = zmq.Context()
+
+        detector_event_sender = context.socket(zmq.PAIR)
+        detector_event_receiver = context.socket(zmq.PAIR)
+        detector_event_sender.bind("inproc://detector_bridge")
+        detector_event_receiver.connect("inproc://detector_bridge")
+
+        database_event_sender = context.socket(zmq.PAIR)
+        database_event_receiver = context.socket(zmq.PAIR)
+        database_event_sender.bind("inproc://database_bridge")
+        database_event_receiver.connect("inproc://database_bridge")
+
+        detector_instance = DetectorInstance(detector_event_receiver, database_event_sender, gnu_strings_async)
+        detector_instance.start()
+        writer_instance = DetectedDataWriter(database_event_receiver, self._database)
+        writer_instance.start()
+        self._database.run_detection(detector_event_sender)
