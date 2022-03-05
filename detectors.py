@@ -1,5 +1,4 @@
 from concurrent.futures import ThreadPoolExecutor
-import pickle
 import string
 import subprocess
 import threading
@@ -16,7 +15,7 @@ from database import COIN, Database, DetectorPayload, DetectedDataPayload
 def detector_worker(sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload], detector_payload: DetectorPayload) -> None:
     detected_data = detector(detector_payload)
     if detected_data.data_length > 1:
-        sender.send(pickle.dumps(detected_data))
+        sender.send_pyobj(detected_data)
 
 
 class DetectorInstance(threading.Thread):
@@ -27,22 +26,11 @@ class DetectorInstance(threading.Thread):
         threading.Thread.__init__(self)
  
     def run(self) -> None:
-        executor = ThreadPoolExecutor(100)
+        executor = ThreadPoolExecutor(10)
         while True:
-            detector_payload: DetectedDataPayload = pickle.loads(self._receiver.recv())
-            executor.submit(detector_worker, (self._sender, self._detector, detector_payload))
-
-
-class DetectedDataWriter(threading.Thread):
-    def __init__(self, receiver: zmq.Socket, database: Database):
-        self._receiver = receiver
-        self._database = database
-        threading.Thread.__init__(self)
-
-    def run(self) -> None:
-        while True:
-            detected_data_payload: DetectedDataPayload = pickle.loads(self._receiver.recv())
-            self._database.insert_detected_ascii_records([detected_data_payload])
+            detector_payload: DetectorPayload = self._receiver.recv_pyobj()
+            # executor.submit(detector_worker, (self._sender, self._detector, detector_payload))
+            executor.submit(detector_worker(self._sender, self._detector, detector_payload))
 
 
 def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
@@ -66,6 +54,12 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
     assert process.stdin is not None
     process.stdin.write(payload.data)
     output = process.communicate()[0]
+    process.wait()
+    process.kill()
+    process.wait()
+    process.terminate()
+    if process.wait() != 0:
+        print(process.communicate())
     length = len(output.decode("ascii").strip())
     return DetectedDataPayload(payload.txid, payload.data_type, payload.extra_index, length)
 
@@ -108,7 +102,7 @@ def find_file_with_imghdr(bytestring: bytes) -> str:
     return ""
 
 
-def native_strings(bytestring: bytes, min: int = 10) -> str:
+def native_strings(detector_payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
     """Find and return a string with the specified minimum size using a python native implementation
     :param bytestring: Bytes to be examined.
     :type bytestring: bytes
@@ -119,16 +113,18 @@ def native_strings(bytestring: bytes, min: int = 10) -> str:
     """
 
     result = ""
-    for c in bytestring:
+    for c in detector_payload.data:
         if chr(c) in string.printable:
             result += chr(c)
             continue
         if len(result) >= min:
-            return result
+            return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
+
         result = ""
     if len(result) >= min:  # catch result at EOF
-        return result
-    return ""
+        return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
+    return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, 0)
+
 
 
 def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
@@ -191,6 +187,7 @@ class Detector:
 
         detector_instance = DetectorInstance(detector_event_receiver, database_event_sender, gnu_strings)
         detector_instance.start()
-        writer_instance = DetectedDataWriter(database_event_receiver, self._database)
-        writer_instance.start()
-        self._database.run_detection(detector_event_sender)
+        # writer_instance = DetectedDataWriter(database_event_receiver, self._database)
+        # writer_instance.start()
+        # self._database.run_detection(detector_event_sender, database_event_receiver)
+        self._database.run_detection(native_strings)

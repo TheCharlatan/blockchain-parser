@@ -1,7 +1,6 @@
 import enum
-import pickle
 import sqlite3
-from typing import Iterable, NamedTuple, List
+from typing import Callable, Iterable, NamedTuple, List
 import zmq
 
 
@@ -183,26 +182,75 @@ class Database:
     def insert_detected_ascii_records(
         self,
         records : Iterable[DetectedDataPayload],
+        conn: sqlite3.Connection
     ) -> None:
-        conn = sqlite3.connect(self.name)
+        c = conn.cursor()
         try:
-            conn.executemany(
+            c.executemany(
                 "INSERT INTO asciiData(TXID,DATA_TYPE,EXTRA_INDEX,STRING_LENGTH) values (?,?,?,?)",
                 records
             )
 
         except sqlite3.IntegrityError:
+            print("integrity error")
             return
         except BaseException:
+            print("base exception")
             raise
 
-        conn.commit()
-        conn.close()
+        c.close()
+        # print("ascii data written")
 
 
-    def run_detection(self, detector_event_sender: zmq.Socket) -> None:
+    # def run_detection(self, detector_event_sender: zmq.Socket, database_event_receiver: zmq.Socket) -> None:
+        # conn = sqlite3.connect(self.name)
+        # detected_counter = 0
+        # iterated_counter = 0
+        # buffer: List[DetectedDataPayload] = []
+        # for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
+            # iterated_counter += 1
+            # detector_event_sender.send_pyobj(DetectorPayload(txid, data_type, extra_index, data))
+            # 
+            # if iterated_counter % 1000 == 0:
+                # print(iterated_counter)
+            # 
+            # try:
+                # buffer.append(database_event_receiver.recv_pyobj(zmq.NOBLOCK))
+                # detected_counter += 1
+            # except zmq.ZMQError:
+                # continue
+            # 
+            # if len(buffer) > 100:
+                # print(detected_counter)
+                # self.insert_detected_ascii_records(buffer, conn)
+                # buffer= []
+        # 
+        # conn.commit()
+        # conn.close()
+        # 
+        # print("\n\n\nCompleted detection!\n\n\n")
+        # 
+
+    def run_detection(self, detector: Callable[[DetectorPayload], DetectedDataPayload]) -> None:
         conn = sqlite3.connect(self.name)
+        counter = 0
+        detected_count = 0
+        res = conn.execute("SELECT COUNT(TXID) FROM cryptoData")
+        for i in res:
+            res = i
+        results = []
         for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
-            detector_event_sender.send(pickle.dumps(DetectorPayload(txid, data_type, extra_index, data)))
+            counter += 1
+            detected = detector(DetectorPayload(txid, data_type, extra_index, data))
+            if detected.data_length > 8:
+                detected_count += 1
+                results.append(detected)
+                if len(results) > 100:
+                    print("writing data")
+                    self.insert_detected_ascii_records(results, conn)
+                    print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
+                    results = []
+            conn.commit()
         print("\n\n\nCompleted detection!\n\n\n")
+        print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
 
