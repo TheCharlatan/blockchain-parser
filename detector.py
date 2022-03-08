@@ -54,13 +54,9 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
     assert process.stdin is not None
     process.stdin.write(payload.data)
     output = process.communicate()[0]
-    process.wait()
-    process.kill()
-    process.wait()
-    process.terminate()
-    if process.wait() != 0:
-        print(process.communicate())
+    print(output)
     length = len(output.decode("ascii").strip())
+    print(output.decode("ascii").strip())
     return DetectedDataPayload(payload.txid, payload.data_type, payload.extra_index, length)
 
 

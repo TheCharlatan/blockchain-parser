@@ -11,6 +11,7 @@ plyvel = "*"
 ethereum-etl = "*"
 python-snappy = "*"
 pyzmq = "*"
+monero = "*"
 
 [requires]
 python_version = "3.7.0"
