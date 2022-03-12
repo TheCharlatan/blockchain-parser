@@ -1,7 +1,7 @@
 from pathlib import Path
 from tkinter import N
 from bitcoin_parser import BitcoinParser
-from database import BLOCKCHAIN, DATATYPE, Database, coinStringToCoin
+from database import BLOCKCHAIN, Database, coinStringToCoin
 import binascii
 import argparse
 from ethereum_parser import EthereumParser
@@ -10,15 +10,14 @@ from detector import Detector
 from monero_parser import MoneroParser
 from parser import DataExtractor
 
-
 def unhexlify_str(h: str) -> bytes:
     return binascii.unhexlify(h.encode("ascii"))
 
 
-def parse(blockchain: str, coin_path: str, database: str):
-    coin_path = Path(coin_path)
+def parse(blockchain: str, raw_coin_path: str, database_name: str) -> None:
+    coin_path = Path(raw_coin_path)
     # Create a parser
-    parser = DataExtractor
+    parser: DataExtractor
     if "bitcoin" in blockchain:
         parser = BitcoinParser(
             coin_path, BLOCKCHAIN.BITCOIN_REGTEST)
@@ -28,17 +27,17 @@ def parse(blockchain: str, coin_path: str, database: str):
     elif "monero" in blockchain:
         parser = MoneroParser(coin_path, BLOCKCHAIN.MONERO_STAGENET)
     else:
-        raise "invalid coin argument"
+        raise BaseException("invalid coin argument in parse method")
 
     # Create a database handler
-    database = Database(database)
+    database = Database(database_name)
 
     # Parse the blockchains
     parser.parse_and_extract_blockchain(database)
     return
 
-def analyze(blockchain: str, database_path: str):
-    blockchain = coinStringToCoin(blockchain)
+def analyze(blockchain_raw: str, database_path: str) -> None:
+    blockchain = coinStringToCoin(blockchain_raw)
     database = Database(database_path)
     analyzer = Detector(blockchain, database)
     analyzer.analyze()
@@ -101,9 +100,9 @@ if __name__ == "__main__":
     elif args.mode == "analyze":
         analyze(args.blockchain, args.database)
     elif args.mode == "view":
-        raise "view mode not implemented yet"
+        raise BaseException("view mode not implemented yet")
     else:
-        raise "require a mode to run in"
+        raise BaseException("require a mode to run in")
 
     # Retrieve and prine some results
     # results = database.get_data(DATATYPE.SCRIPT_SIG)

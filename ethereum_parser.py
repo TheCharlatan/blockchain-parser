@@ -45,7 +45,7 @@ class EthereumDataMessage(NamedTuple):
     data: bytes
     txid: bytes
     data_type: DATATYPE
-    height: int
+    block_height: int
 
 
 class DatabaseWriter(threading.Thread):

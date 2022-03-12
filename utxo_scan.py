@@ -5,7 +5,7 @@
 from pathlib import Path
 import plyvel
 from binascii import hexlify, unhexlify
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional
 from database import BLOCKCHAIN, DATATYPE, Database
 
 
@@ -311,7 +311,7 @@ class UTXOIterator:
         self._prefix = prefix
         self._iterator = db.iterator(prefix=prefix)
 
-    def __next__(self):
+    def __iter__(self) -> Dict[str, Any]:
         key, o_value = self._iterator.__next__()
         key = hexlify(key)
         if self._o_key is not None:

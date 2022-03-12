@@ -8,7 +8,7 @@ from database import BLOCKCHAIN, DATATYPE, Database
 from parser import DataExtractor
 import bitcoin.rpc
 import os
-from utxo_scan import UTXOIterator, parse_ldb
+from utxo_scan import UTXOIterator
 from pathlib import Path
 
 

@@ -143,19 +143,22 @@ def monero_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[D
     # ignore the exceptions, we are only filtering positives anyway
     except ValueError as err:
         match = p.match(str(err))
-        if match.group(1) is not None:
-            probable_data_index = int(match.group(1))
-        res = magic.from_buffer(detector_payload.data[probable_data_index:])
+        if match is None:
+            pass
+        else:
+            if match.group(1) is not None:
+                probable_data_index = int(match.group(1))
+            res = magic.from_buffer(detector_payload.data[probable_data_index:])
 
-        for i in range(len(detector_payload.data[probable_data_index:])):
-            if detector_payload.data[i:i+4] == bytes.fromhex("25504446") or detector_payload.data[i:i+4] == bytes.fromhex("dfbf34eb"):
-                print("found PDF!")
+            for i in range(len(detector_payload.data[probable_data_index:])):
+                if detector_payload.data[i:i+4] == bytes.fromhex("25504446") or detector_payload.data[i:i+4] == bytes.fromhex("dfbf34eb"):
+                    print("found PDF!")
 
-        if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
-            return None
+            if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
+                return None
 
-        print(res, detector_payload.txid, "offset")
-        return DetectedDataPayload("", "", 0, len(res))
+            print(res, detector_payload.txid, "offset")
+            return DetectedDataPayload("", "", 0, len(res))
     except BaseException:
         pass
 
