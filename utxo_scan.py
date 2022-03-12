@@ -310,8 +310,11 @@ class UTXOIterator:
         self._o_key = o_key
         self._prefix = prefix
         self._iterator = db.iterator(prefix=prefix)
+    
+    def __iter__(self):
+        return self
 
-    def __iter__(self) -> Dict[str, Any]:
+    def __next__(self) -> Dict[str, Any]:
         key, o_value = self._iterator.__next__()
         key = hexlify(key)
         if self._o_key is not None:

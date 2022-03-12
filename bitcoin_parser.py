@@ -383,7 +383,7 @@ class BitcoinParser(DataExtractor):
         :type database: Database
         """
 
-        blockchain = Blockchain(os.path.expanduser(self.blockchain_path + "/blocks"))
+        blockchain = Blockchain(os.path.expanduser(str(self.blockchain_path) + "/blocks"))
         height = 0
         total_txs = 0
         ignored_tx_inputs = 0
@@ -400,7 +400,7 @@ class BitcoinParser(DataExtractor):
         writer = DatabaseWriter(database, database_event_receiver, self.coin)
         writer.start()
 
-        print("commencing bitcoin parsing of " + self.blockchain_path + "/blocks/index")
+        print("commencing bitcoin parsing of " + str(self.blockchain_path) + "/blocks/index")
 
 
         for block in blockchain.get_ordered_blocks(
