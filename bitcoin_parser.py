@@ -1,20 +1,30 @@
 import pickle
 from re import U
 import threading
+from typing import NamedTuple
 from blockchain_parser.blockchain import Blockchain
 import zmq
-from database import COIN, DATATYPE, Database
-from parser import CoinParser
+from database import BLOCKCHAIN, DATATYPE, Database
+from parser import DataExtractor
 import bitcoin.rpc
-from typing import Optional
 import os
 from utxo_scan import UTXOIterator, parse_ldb
+from pathlib import Path
+
+
+class BitcoinDataMessage(NamedTuple):
+    data: bytes
+    txid: bytes
+    data_type: DATATYPE
+    block_height: int
+    extra_index: int
+
 
 class DatabaseWriter(threading.Thread):
     """DatabaseWriter acts as a worker thread for writing to the sql database
     and receives from a zmq socket"""
 
-    def __init__(self, database: Database, receiver: zmq.Socket, coin: COIN):
+    def __init__(self, database: Database, receiver: zmq.Socket, coin: BLOCKCHAIN):
         """
         :param database: Database to be written into
         :type database: Database
@@ -30,15 +40,15 @@ class DatabaseWriter(threading.Thread):
     def run(self) -> None:
         records = []
         while True:
-            [data, txid, data_type, block_height, output_index] = pickle.loads(self._receiver.recv())
+            message: BitcoinDataMessage = self._receiver.recv_pyobj()
 
             records.append((
-                data,
-                txid,
+                message.data,
+                message.txid,
                 self._coin.value,
-                data_type.value,
-                block_height,
-                output_index
+                message.data_type.value,
+                message.block_height,
+                message.extra_index,
             ))
 
             if len(records) > 500:
@@ -355,8 +365,8 @@ def is_p2tr_output(script: bitcoin.core.script.CScript) -> bool:
     return script[0] == bitcoin.core.script.OP_1
 
 
-class BitcoinParser(CoinParser):
-    def __init__(self, blockchain_path: str, coin: COIN):
+class BitcoinParser(DataExtractor):
+    def __init__(self, blockchain_path: Path, coin: BLOCKCHAIN):
         """
         :param blockchain_path: Path to the Bitcoin blockchain (e.g. /home/user/.bitcoin/).
         :type blockchain_path: str
@@ -367,7 +377,7 @@ class BitcoinParser(CoinParser):
         self.blockchain_path = blockchain_path
         self.coin = coin
 
-    def parse_blockchain(self, database: Database) -> None:
+    def parse_and_extract_blockchain(self, database: Database) -> None:
         """Parse the blockchain with the previously constructed options
         :param database: Database to be written into.
         :type database: Database
@@ -394,7 +404,7 @@ class BitcoinParser(CoinParser):
 
 
         for block in blockchain.get_ordered_blocks(
-            os.path.expanduser(self.blockchain_path + "/blocks/index"), end=2100000
+            os.path.expanduser(str(self.blockchain_path.absolute()) + "/blocks/index"), end=2100000
         ):
             height += 1
             for (tx_index, tx) in enumerate(block.transactions):
@@ -423,7 +433,7 @@ class BitcoinParser(CoinParser):
                         ignored_tx_inputs += 1
                         continue
 
-                    database_event_sender.send(pickle.dumps([input.scriptSig, tx.txid, DATATYPE.SCRIPT_SIG, block.height, input_index]))
+                    database_event_sender.send_pyobj(BitcoinDataMessage(input.scriptSig, tx.txid, DATATYPE.SCRIPT_SIG, block.height, input_index))
 
                 for (output_index, output) in enumerate(c_tx.vout):
                     tx_outputs += 1
@@ -457,7 +467,7 @@ class BitcoinParser(CoinParser):
                         continue
 
                     # print("nonstandard output:", output)
-                    database_event_sender.send(pickle.dumps([output.scriptPubKey, tx.txid, DATATYPE.SCRIPT_PUBKEY, block.height, output_index]))
+                    database_event_sender.send_pyobj(BitcoinDataMessage(output.scriptPubKey, tx.txid, DATATYPE.SCRIPT_PUBKEY, block.height, output_index))
 
             if height % 500 == 0:
                 print("parsed until height:", height, tx_inputs, ignored_tx_inputs, tx_outputs, ignored_tx_outputs)
@@ -470,4 +480,4 @@ class BitcoinParser(CoinParser):
             utxo_counter += 1
             if (utxo_counter % 1000 == 0):
                 print(utxo_counter)
-            database_event_sender.send(pickle.dumps([utxo["out"]["data"], utxo["tx_id"], DATATYPE.SCRIPT_PUBKEY, utxo["height"], utxo["index"]]))
+            database_event_sender.send_pyobj(BitcoinDataMessage(utxo["out"]["data"], utxo["tx_id"], DATATYPE.SCRIPT_PUBKEY, utxo["height"], utxo["index"]))

@@ -1,30 +1,32 @@
+from pathlib import Path
 from tkinter import N
 from bitcoin_parser import BitcoinParser
-from database import COIN, DATATYPE, Database, coinStringToCoin
+from database import BLOCKCHAIN, DATATYPE, Database, coinStringToCoin
 import binascii
 import argparse
 from ethereum_parser import EthereumParser
-from detectors import Detector
+from detector import Detector
 
 from monero_parser import MoneroParser
-from parser import CoinParser
+from parser import DataExtractor
 
 
 def unhexlify_str(h: str) -> bytes:
     return binascii.unhexlify(h.encode("ascii"))
 
 
-def parse(coin: str, coin_path: str, database: str):
+def parse(blockchain: str, coin_path: str, database: str):
+    coin_path = Path(coin_path)
     # Create a parser
-    parser = CoinParser
-    if "bitcoin" in coin:
+    parser = DataExtractor
+    if "bitcoin" in blockchain:
         parser = BitcoinParser(
-            coin_path, COIN.BITCOIN_REGTEST)
-    elif "ethereum" in coin:
+            coin_path, BLOCKCHAIN.BITCOIN_REGTEST)
+    elif "ethereum" in blockchain:
         parser = EthereumParser(
-            coin_path, COIN.ETHEREUM_MAINNET)
-    elif "monero" in coin:
-        parser = MoneroParser(coin_path, COIN.MONERO_STAGENET)
+            coin_path, BLOCKCHAIN.ETHEREUM_MAINNET)
+    elif "monero" in blockchain:
+        parser = MoneroParser(coin_path, BLOCKCHAIN.MONERO_STAGENET)
     else:
         raise "invalid coin argument"
 
@@ -32,13 +34,13 @@ def parse(coin: str, coin_path: str, database: str):
     database = Database(database)
 
     # Parse the blockchains
-    parser.parse_blockchain(database)
+    parser.parse_and_extract_blockchain(database)
     return
 
-def analyze(coin: str, database: str):
-    coin = coinStringToCoin(coin)
-    database = Database(database)
-    analyzer = Detector(coin, database)
+def analyze(blockchain: str, database_path: str):
+    blockchain = coinStringToCoin(blockchain)
+    database = Database(database_path)
+    analyzer = Detector(blockchain, database)
     analyzer.analyze()
     return
 
@@ -66,8 +68,8 @@ if __name__ == "__main__":
         help="name of the database used to store results",
     )
     parser.add_argument(
-        "-c",
-        "--coin",
+        "-b",
+        "--blockchain",
         default="bitcoin_mainnet",
         help="""Coin to target. Only single targets are allowed, valid targets are: \n
             bitcoin_mainnet   |
@@ -80,7 +82,7 @@ if __name__ == "__main__":
             """
     )
     parser.add_argument(
-        "-o",
+        "-m",
         "--mode",
         default="parse",
         help="""Mode of operation, either parses or analyzes data. Valid arguments are: \n
@@ -92,11 +94,12 @@ if __name__ == "__main__":
 
     # Parse the command line arguments
     args = parser.parse_args()
+    path = args.data_dir
 
     if args.mode == "parse":
-        parse(args.coin, args.data_dir, args.database)
+        parse(args.blockchain, args.data_dir, args.database)
     elif args.mode == "analyze":
-        analyze(args.coin, args.database)
+        analyze(args.blockchain, args.database)
     elif args.mode == "view":
         raise "view mode not implemented yet"
     else:

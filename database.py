@@ -1,10 +1,9 @@
 import enum
 import sqlite3
 from typing import Callable, Iterable, NamedTuple, List
-import zmq
 
 
-class COIN(enum.Enum):
+class BLOCKCHAIN(enum.Enum):
     """Coin/Blockchain"""
 
     BITCOIN_MAINNET = "bitcoin_mainnet"
@@ -16,21 +15,21 @@ class COIN(enum.Enum):
     ETHEREUM_MAINNET = "ethereum_mainnet"
 
 
-def coinStringToCoin(name: str) -> COIN:
+def coinStringToCoin(name: str) -> BLOCKCHAIN:
     if name == "bitcoin_mainnet":
-        return COIN.BITCOIN_MAINNET
+        return BLOCKCHAIN.BITCOIN_MAINNET
     elif name == "bitcoin_testnet3":
-        return COIN.BITCOIN_TESTNET3
+        return BLOCKCHAIN.BITCOIN_TESTNET3
     elif name == "bitcoin_regtest":
-        return COIN.BITCOIN_REGTEST
+        return BLOCKCHAIN.BITCOIN_REGTEST
     elif name == "monero_mainnet":
-        return COIN.MONERO_MAINNET
+        return BLOCKCHAIN.MONERO_MAINNET
     elif name == "monero_stagenet":
-        return COIN.MONERO_STAGENET
+        return BLOCKCHAIN.MONERO_STAGENET
     elif name == "monero_testnet":
-        return COIN.MONERO_TESTNET
+        return BLOCKCHAIN.MONERO_TESTNET
     elif name == "ethereum_mainnet":
-        return COIN.ETHEREUM_MAINNET
+        return BLOCKCHAIN.ETHEREUM_MAINNET
     else:
         raise BaseException("invalid coin name")
 
@@ -139,7 +138,7 @@ class Database:
         self,
         data: str,
         txid: str,
-        coin: COIN,
+        coin: BLOCKCHAIN,
         data_type: DATATYPE,
         block_height: int,
         extra_index: int,
@@ -242,12 +241,14 @@ class Database:
         for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
             counter += 1
             detected = detector(DetectorPayload(txid, data_type, extra_index, data))
+            if detected is None:
+                continue
             if detected.data_length > 8:
                 detected_count += 1
                 results.append(detected)
                 if len(results) > 100:
                     print("writing data")
-                    self.insert_detected_ascii_records(results, conn)
+                    # self.insert_detected_ascii_records(results, conn)
                     print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
                     results = []
             conn.commit()

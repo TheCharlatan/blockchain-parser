@@ -2,14 +2,15 @@ from concurrent.futures import ThreadPoolExecutor
 import string
 import subprocess
 import threading
-from typing import Callable
+from typing import Callable, Optional
 import magic
 import imghdr
 import bitcoin.rpc
+from monero.transaction import ExtraParser
 
 import zmq
 
-from database import COIN, Database, DetectorPayload, DetectedDataPayload
+from database import BLOCKCHAIN, Database, DetectorPayload, DetectedDataPayload
 
 
 def detector_worker(sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload], detector_payload: DetectorPayload) -> None:
@@ -122,6 +123,57 @@ def native_strings(detector_payload: DetectorPayload, min: int = 10) -> Detected
     return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, 0)
 
 
+def monero_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedDataPayload]:
+    import re 
+    extra_data = ExtraParser(detector_payload.data)
+    probable_data_index = 0
+    p = re.compile('offset\s(\d+):*')
+    try:
+        res = extra_data.parse()
+        # filter out entries where the nonces are small
+        flag = False
+        # filter out transactions without a payment ID
+        if "nonces" not in res.keys():
+            return None
+        for nonce in res["nonces"]:
+            if len(nonce) > 9:
+                flag = True
+        if not flag:
+            return None
+    # ignore the exceptions, we are only filtering positives anyway
+    except ValueError as err:
+        match = p.match(str(err))
+        if match.group(1) is not None:
+            probable_data_index = int(match.group(1))
+        res = magic.from_buffer(detector_payload.data[probable_data_index:])
+
+        for i in range(len(detector_payload.data[probable_data_index:])):
+            if detector_payload.data[i:i+4] == bytes.fromhex("25504446") or detector_payload.data[i:i+4] == bytes.fromhex("dfbf34eb"):
+                print("found PDF!")
+
+        if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
+            return None
+
+        print(res, detector_payload.txid, "offset")
+        return DetectedDataPayload("", "", 0, len(res))
+    except BaseException:
+        pass
+
+    for i in range(len(detector_payload.data[probable_data_index:])):
+        if detector_payload.data[i:i+4] == bytes.fromhex("25504446") or detector_payload.data[i:i+4] == bytes.fromhex("dfbf34eb"):
+            print("found PDF!")
+
+    res = magic.from_buffer(detector_payload.data)
+    if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
+        return None
+    print(res, detector_payload.txid, "not offset")
+
+
+
+    return DetectedDataPayload("", "", 0, 0)
+
+
+
 
 def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
     """Return true if the script contains the OP_RETURN opcode
@@ -164,7 +216,7 @@ def bitcoin_find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
 
 
 class Detector:
-    def __init__(self, coin: COIN, database: Database):
+    def __init__(self, coin: BLOCKCHAIN, database: Database):
         self._coin = coin
         self._database = database
 
@@ -186,4 +238,4 @@ class Detector:
         # writer_instance = DetectedDataWriter(database_event_receiver, self._database)
         # writer_instance.start()
         # self._database.run_detection(detector_event_sender, database_event_receiver)
-        self._database.run_detection(native_strings)
+        self._database.run_detection(monero_find_file_with_magic)

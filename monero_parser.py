@@ -1,18 +1,18 @@
-from calendar import c
-from typing import List, Optional
-from database import COIN, DATATYPE, Database
+from typing import List
+from database import BLOCKCHAIN, DATATYPE, Database
 import lmdb
 from monero_serialize import xmrserialize as x
 from monero_serialize import xmrtypes as xmr
 import asyncio
 import struct
-from parser import CoinParser
+from parser import DataExtractor
 import threading
 import zmq
-import pickle
+from pathlib import Path
 
 def async_results(i):
     return i[1]
+
 
 class TxParser(threading.Thread):
     """TxParser acts as a worker thread for parsing raw monero transactions
@@ -33,7 +33,7 @@ class TxParser(threading.Thread):
         loop = asyncio.new_event_loop()
         while True:
             print("parsing monero transactions...")
-            [counter, monero_txs_raw, monero_tx_indices] = pickle.loads(self._receiver.recv())
+            [counter, monero_txs_raw, monero_tx_indices] = self._receiver.recv_pyobj()
             monero_txs = loop.run_until_complete(
                 deserialize_transactions(map(async_results, monero_txs_raw))
             )
@@ -45,14 +45,14 @@ class TxParser(threading.Thread):
 
             print("parsed monero transactions")
                 
-            self._sender.send(pickle.dumps([counter, extra_bytes_list, monero_tx_indices]))
+            self._sender.send_pyobj([counter, extra_bytes_list, monero_tx_indices])
 
 
 class DatabaseWriter(threading.Thread):
     """DatabaseWriter acts as a worker thread for writing to the sql database
     and receives from a zmq socket"""
 
-    def __init__(self, database: Database, receiver: zmq.Socket, coin: COIN):
+    def __init__(self, database: Database, receiver: zmq.Socket, coin: BLOCKCHAIN):
         """
         :param database: Database to be written into
         :type database: Database
@@ -69,7 +69,7 @@ class DatabaseWriter(threading.Thread):
         default_extra_counter = 0
 
         while True:
-            [counter, extra_bytes_list, monero_tx_indices] = pickle.loads(self._receiver.recv())
+            [counter, extra_bytes_list, monero_tx_indices] = self._receiver.recv_pyobj()
             print("writing " + self._coin)
             records = []
 
@@ -174,8 +174,8 @@ async def deserialize_transactions(monero_txs_raw: List[bytes]):
     return done[1:]
 
 
-class MoneroParser(CoinParser):
-    def __init__(self, blockchain_path: str, coin: COIN) -> None:
+class MoneroParser(DataExtractor):
+    def __init__(self, blockchain_path: Path, coin: BLOCKCHAIN) -> None:
         """
         :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero).
         :type blockchain_path: str
@@ -183,10 +183,10 @@ class MoneroParser(CoinParser):
         :type coin: COIN
         """
 
-        self.blockchain_path = blockchain_path + "/lmdb"
+        self.blockchain_path = str(blockchain_path.expanduser()) + "/lmdb"
         self.coin = coin
 
-    def parse_blockchain(self, database: Optional[Database]):
+    def parse_and_extract_blockchain(self, database: Database):
         """Parse the blockchain with the previously constructed options
         :param database: Database to be written into.
         :type database: Database
@@ -245,7 +245,7 @@ class MoneroParser(CoinParser):
                     monero_txs_raw = cursor.getmulti(db_tx_indices)
                     cursor.close()
                     print("got monero transaction")
-                    tx_parser_event_sender.send(pickle.dumps([counter, monero_txs_raw, monero_tx_indices]))
+                    tx_parser_event_sender.send_pyobj([counter, monero_txs_raw, monero_tx_indices])
 
                     values = []
                     print(counter)

@@ -2,10 +2,11 @@
 # https://github.com/sr-gi/bitcoin_tools/blob/0f6ea45b6368200e481982982822f0416e0c438d/bitcoin_tools/analysis/status/utils.py#L843
 # ported to python3
 
+from pathlib import Path
 import plyvel
 from binascii import hexlify, unhexlify
 from typing import Callable, Optional
-from database import COIN, DATATYPE, Database
+from database import BLOCKCHAIN, DATATYPE, Database
 
 
 NSPECIALSCRIPTS = 6
@@ -212,7 +213,7 @@ def deobfuscate_value(obfuscation_key, value):
 
 def parse_ldb(
     database: Optional[Database],
-    coin=COIN.BITCOIN_MAINNET,
+    coin=BLOCKCHAIN.BITCOIN_MAINNET,
     btc_dir="/home/drgrid/.bitcoin",
     fin_name="chainstate",
 ):
@@ -274,7 +275,7 @@ def parse_ldb(
 class UTXOIterator:
     def __init__(
         self,
-        path: str="/home/drgrid/.bitcoin",
+        path: Path=Path("/home/drgrid/.bitcoin"),
         fin_name: str="chainstate",
     ) -> None:
         """
@@ -291,7 +292,7 @@ class UTXOIterator:
         prefix = b"C"
         # Open the LevelDB
         db = plyvel.DB(
-            path + "/" + fin_name, compression=None
+            str(path.expanduser()) + "/" + fin_name, compression=None
         )  # Change with path to chainstate
 
         # Load obfuscation key (if it exists)
