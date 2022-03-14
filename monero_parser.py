@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import Any, List, NamedTuple
 from database import BLOCKCHAIN, DATATYPE, Database
 import lmdb
 from monero_serialize import xmrserialize as x
@@ -12,17 +12,22 @@ from pathlib import Path
 
 
 class MoneroParserMessage(NamedTuple):
+    """ZMQ Message for the TxParser thread for further data to be extracted from the transactions"""
     counter: int
     monero_txs_raw: List[bytes]
     monero_tx_indices: List[xmr.TxIndex]
 
 class MoneroDataMessage(NamedTuple):
+    """ZMQ Message for the DatabaseWriter thread to write the data to the database"""
     counter: int
     extra_bytes_list: List[bytes]
     monero_tx_indices: List[xmr.TxIndex]
 
 
-def async_results(i):
+def async_results(i: List[Any]):
+    """Just a dummy function to get the results of the mapped async functions
+    param i: List containing results
+    :type i: List[Any]"""
     return i[1]
 
 
@@ -64,17 +69,17 @@ class DatabaseWriter(threading.Thread):
     """DatabaseWriter acts as a worker thread for writing to the sql database
     and receives from a zmq socket"""
 
-    def __init__(self, database: Database, receiver: zmq.Socket, coin: BLOCKCHAIN):
+    def __init__(self, database: Database, receiver: zmq.Socket, blockchain: BLOCKCHAIN):
         """
         :param database: Database to be written into
         :type database: Database
         :param receiver: Receives parsed extra bytes and monero transaction indices
         :type receiver: zmq.Socket
-        :param coin: Some monero coin
-        :type coin: Coin"""
+        :param blockchain: Some Monero-compatible blockchain
+        :type blockchain: BLOCKCHAIN"""
         self._db = database
         self._receiver = receiver
-        self._coin = coin
+        self._blockchain = blockchain
         threading.Thread.__init__(self)
     
     def run(self):
@@ -82,7 +87,7 @@ class DatabaseWriter(threading.Thread):
 
         while True:
             message: MoneroDataMessage = self._receiver.recv_pyobj()
-            print("writing " + self._coin.value)
+            print("writing " + self._blockchain.value)
             records = []
 
             for i in range(len(message.extra_bytes_list)):
@@ -93,7 +98,7 @@ class DatabaseWriter(threading.Thread):
                 record = (
                     message.extra_bytes_list[i],
                     bytes(message.monero_tx_indices[i].key).hex(),
-                    self._coin.value,
+                    self._blockchain.value,
                     DATATYPE.TX_EXTRA.value,
                     message.monero_tx_indices[i].data.block_id,
                     0,
@@ -102,7 +107,7 @@ class DatabaseWriter(threading.Thread):
             
             self._db.insert_records(records)
 
-            print("written ", self._coin, message.counter, default_extra_counter)
+            print("written ", self._blockchain, message.counter, default_extra_counter)
 
 
 async def deserialize_tx_index(tx_index_raw: bytes) -> xmr.TxIndex:
@@ -189,16 +194,16 @@ async def deserialize_transactions(monero_txs_raw: List[bytes]):
 
 
 class MoneroParser(DataExtractor):
-    def __init__(self, blockchain_path: Path, coin: BLOCKCHAIN) -> None:
+    def __init__(self, blockchain_path: Path, blockchain: BLOCKCHAIN) -> None:
         """
         :param blockchain_path: Path to the Monero lmdb directory (e.g. /home/user/.bitmonero).
         :type blockchain_path: str
-        :param coin: One of the Monero compatible coins.
-        :type coin: COIN
+        :param blockchain: One of the Monero compatible blockchain types.
+        :type blockchain: BLOCKCHAIN
         """
 
         self.blockchain_path = str(blockchain_path.expanduser()) + "/lmdb"
-        self.coin = coin
+        self.blockchain = blockchain
 
     def parse_and_extract_blockchain(self, database: Database):
         """Parse the blockchain with the previously constructed options
@@ -234,7 +239,7 @@ class MoneroParser(DataExtractor):
 
         tx_reader = TxParser(tx_parser_event_receiver, database_event_sender)
         tx_reader.start()
-        writer = DatabaseWriter(database, database_event_receiver, self.coin)
+        writer = DatabaseWriter(database, database_event_receiver, self.blockchain)
         writer.start()
 
         values = []

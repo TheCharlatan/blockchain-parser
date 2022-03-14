@@ -16,6 +16,9 @@ ERC20_TRANSFER_FROM_METHOD_ID = bytes.fromhex("23b872dd")
 ETH_LEADING_12_ZERO_BYTES = bytes.fromhex("0"*24)
 
 def check_if_template_contract_call(tx_data: bytes) -> bool:
+    """"Checks if the provide tx_data contains one of the standard ERC20 function invocations
+    :param tx_data: The tx data to be analyzed
+    :type tx_data: bytes"""
     if len(tx_data) < 5:
         return False
 
@@ -42,6 +45,7 @@ def check_if_template_contract_call(tx_data: bytes) -> bool:
 
 
 class EthereumDataMessage(NamedTuple):
+    """Named Tuple for the zmq message for writing prased and extracted data to the database"""
     data: bytes
     txid: bytes
     data_type: DATATYPE
@@ -52,17 +56,17 @@ class DatabaseWriter(threading.Thread):
     """DatabaseWriter acts as a worker thread for writing to the sql database
     and receives from a zmq socket"""
 
-    def __init__(self, database: Database, receiver: zmq.Socket, coin: BLOCKCHAIN):
+    def __init__(self, database: Database, receiver: zmq.Socket, blockchain: BLOCKCHAIN):
         """
         :param database: Database to be written into
         :type database: Database
         :param receiver: Receives parsed extra bytes and monero transaction indices
         :type receiver: zmq.Socket
-        :param coin: Some monero coin
-        :type coin: Coin"""
+        :param blockchain: Some Ethereum-compatible blockchain
+        :type blockchain: BLOCKCHAIN"""
         self._db = database
         self._receiver = receiver
-        self._coin = coin
+        self._blockchain = blockchain
         threading.Thread.__init__(self)
 
     def run(self) -> None:
@@ -73,7 +77,7 @@ class DatabaseWriter(threading.Thread):
             records.append((
                 message.data,
                 message.txid,
-                self._coin.value,
+                self._blockchain.value,
                 message.data_type.value,
                 message.block_height,
                 0
@@ -86,29 +90,33 @@ class DatabaseWriter(threading.Thread):
 
 
 class EthereumParser(DataExtractor):
-    def __init__(self, chaindata_path: Path, coin: BLOCKCHAIN):
+    def __init__(self, chaindata_path: Path, blockchain: BLOCKCHAIN):
         """
-        :param blockchain_path: Path to the Bitcoin blockchain (e.g. /home/user/.ethereum/geth/chaindata).
+        :param blockchain_path: Path to the Ethereum blockchain (e.g. /home/user/.ethereum/geth/chaindata).
         :type blockchain_path: str
-        :param coin: One of the Bitcoin compatible coins.
-        :type coin: COIN
+        :param blockchain: One of the Ethereum compatible blockchains.
+        :type blockchain: BLOCKCHAIN
         """
-        self.chaindata_path = str(chaindata_path.expanduser()) + "/geth/chaindata"
-        self.ancient_chaindata_path = self.chaindata_path + "/ancient"
-        self.coin = coin
+        self._chaindata_path = str(chaindata_path.expanduser()) + "/geth/chaindata"
+        self._ancient_chaindata_path = self._chaindata_path + "/ancient"
+        self._blockchain = blockchain
 
     def parse_and_extract_blockchain(self, database: Database) -> None:
+        """Parse the blockchain with the previously constructed options
+        :param database: Database to be written into.
+        :type database: Database
+        """
         context = zmq.Context()
         database_event_sender = context.socket(zmq.PAIR)
         database_event_receiver = context.socket(zmq.PAIR)
         database_event_sender.bind("inproc://ethereum_dbbridge")
         database_event_receiver.connect("inproc://ethereum_dbbridge")
 
-        writer = DatabaseWriter(database, database_event_receiver, self.coin)
+        writer = DatabaseWriter(database, database_event_receiver, self._blockchain)
         writer.start()
 
         for height, block_body in enumerate(
-            ParseEthereumBlockBodies(self.ancient_chaindata_path, self.chaindata_path)
+            ParseEthereumBlockBodies(self._ancient_chaindata_path, self._chaindata_path)
         ):
             for (tx_index, tx) in enumerate(block_body.Transactions):
                 if len(tx.data) < 2:
@@ -123,7 +131,7 @@ class EthereumParser(DataExtractor):
                 break
 
         for height, header in enumerate(
-            ParseEthereumBlockHeaders(self.ancient_chaindata_path, self.chaindata_path)
+            ParseEthereumBlockHeaders(self._ancient_chaindata_path, self._chaindata_path)
         ):
             if len(header.Extra) > 0:
                 database_event_sender.send_pyobj(EthereumDataMessage(header.Extra, header.TxHash, DATATYPE.TX_DATA, height))

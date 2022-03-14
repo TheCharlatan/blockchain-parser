@@ -1,4 +1,3 @@
-import pickle
 from re import U
 import threading
 from typing import NamedTuple
@@ -13,6 +12,7 @@ from pathlib import Path
 
 
 class BitcoinDataMessage(NamedTuple):
+    """ZMQ Message for the DatabaseWriter thread with contents to be written to the database"""
     data: bytes
     txid: bytes
     data_type: DATATYPE
@@ -24,17 +24,17 @@ class DatabaseWriter(threading.Thread):
     """DatabaseWriter acts as a worker thread for writing to the sql database
     and receives from a zmq socket"""
 
-    def __init__(self, database: Database, receiver: zmq.Socket, coin: BLOCKCHAIN):
+    def __init__(self, database: Database, receiver: zmq.Socket, blockchain: BLOCKCHAIN):
         """
         :param database: Database to be written into
         :type database: Database
         :param receiver: Receives parsed extra bytes and monero transaction indices
         :type receiver: zmq.Socket
-        :param coin: Some monero coin
-        :type coin: Coin"""
+        :param blockchain: Some Bitcoin-compatible blockchain
+        :type blockchain: BLOCKCHAIN"""
         self._db = database
         self._receiver = receiver
-        self._coin = coin
+        self._blockchain = blockchain
         threading.Thread.__init__(self)
 
     def run(self) -> None:
@@ -45,7 +45,7 @@ class DatabaseWriter(threading.Thread):
             records.append((
                 message.data,
                 message.txid,
-                self._coin.value,
+                self._blockchain.value,
                 message.data_type.value,
                 message.block_height,
                 message.extra_index,
@@ -366,16 +366,16 @@ def is_p2tr_output(script: bitcoin.core.script.CScript) -> bool:
 
 
 class BitcoinParser(DataExtractor):
-    def __init__(self, blockchain_path: Path, coin: BLOCKCHAIN):
+    def __init__(self, blockchain_path: Path, blockchain: BLOCKCHAIN):
         """
         :param blockchain_path: Path to the Bitcoin blockchain (e.g. /home/user/.bitcoin/).
         :type blockchain_path: str
-        :param coin: One of the Bitcoin compatible coins.
-        :type coin: COIN
+        :param blockchain: One of the Bitcoin compatible blockchains.
+        :type blockchain: BLOCKCHAIN
         """
 
-        self.blockchain_path = blockchain_path
-        self.coin = coin
+        self._blockchain_path = blockchain_path
+        self._blockchain = blockchain
 
     def parse_and_extract_blockchain(self, database: Database) -> None:
         """Parse the blockchain with the previously constructed options
@@ -383,7 +383,7 @@ class BitcoinParser(DataExtractor):
         :type database: Database
         """
 
-        blockchain = Blockchain(os.path.expanduser(str(self.blockchain_path) + "/blocks"))
+        blockchain = Blockchain(os.path.expanduser(str(self._blockchain_path) + "/blocks"))
         height = 0
         total_txs = 0
         ignored_tx_inputs = 0
@@ -397,14 +397,14 @@ class BitcoinParser(DataExtractor):
         database_event_sender.bind("inproc://bitcoin_dbbridge")
         database_event_receiver.connect("inproc://bitcoin_dbbridge")
 
-        writer = DatabaseWriter(database, database_event_receiver, self.coin)
+        writer = DatabaseWriter(database, database_event_receiver, self._blockchain)
         writer.start()
 
-        print("commencing bitcoin parsing of " + str(self.blockchain_path) + "/blocks/index")
+        print("commencing bitcoin parsing of " + str(self._blockchain_path) + "/blocks/index")
 
 
         for block in blockchain.get_ordered_blocks(
-            os.path.expanduser(str(self.blockchain_path.absolute()) + "/blocks/index"), end=2100000
+            os.path.expanduser(str(self._blockchain_path.absolute()) + "/blocks/index"), end=2100000
         ):
             height += 1
             for (tx_index, tx) in enumerate(block.transactions):
@@ -476,7 +476,7 @@ class BitcoinParser(DataExtractor):
         print("Completed blockchain parsing, commencing UTXO parsing")
 
         utxo_counter = 0
-        for utxo in UTXOIterator(path=self.blockchain_path):
+        for utxo in UTXOIterator(path=self._blockchain_path):
             utxo_counter += 1
             if (utxo_counter % 1000 == 0):
                 print(utxo_counter)
