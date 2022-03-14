@@ -7,13 +7,13 @@ from ethereum_rlp import Body, Header
 
 class ParseEthereumBlockHeaders:
     def __init__(self, ancient_chaindata_path: str, chaindata_path: str):
-        self.table = FreezerHeadersTable(ancient_chaindata_path)
+        self.eth_freezer_table = FreezerHeadersTable(ancient_chaindata_path)
         self.eth_leveldb = EthLevelDB(chaindata_path)
         self.value = 0
 
     def get_header(self, number: int) -> Header:
         try:
-            header: Union[Header, None] = self.table.get_header_by_height(number)
+            header: Union[Header, None] = self.eth_freezer_table.get_header_by_height(number)
         except:
             header = self.eth_leveldb.get_header_by_height(number)
         if header is None:
@@ -34,15 +34,15 @@ class ParseEthereumBlockHeaders:
 
 class ParseEthereumBlockBodies:
     def __init__(self, ancient_chaindata_path: str, chaindata_path: str):
-        self.table = FreezerBodiesTable(ancient_chaindata_path)
+        self.eth_freezer_table = FreezerBodiesTable(ancient_chaindata_path)
         self.eth_leveldb = EthLevelDB(chaindata_path)
         self.value = 0
 
     def get_body(self, number: int) -> Body:
         try:
-            body: Union[Body, None] = self.table.get_body_by_height(number)
+            body: Union[Body, None] = self.eth_freezer_table.get_body_by_height(number)
         except:
-            body = self.eth_leveldb.get_header_by_height(number)
+            body = self.eth_leveldb.get_body_by_height(number)
         if body is None:
             raise Exception(f"body not found for block height: {number}")
         return body
