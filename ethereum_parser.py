@@ -80,6 +80,7 @@ class DatabaseWriter(threading.Thread):
             ))
 
             if len(records) > 500:
+                print("writing to DB...")
                 self._db.insert_records(records)
                 records = []
 
@@ -117,11 +118,14 @@ class EthereumParser(DataExtractor):
 
                 database_event_sender.send_pyobj(EthereumDataMessage(tx.data, tx.hash(), DATATYPE.TX_DATA, height))
 
-            if height == 50000:
-                return
+            if height == 500000:
+                print("reached end of block body parsing, flipping to header parsing")
+                break
 
         for height, header in enumerate(
             ParseEthereumBlockHeaders(self.ancient_chaindata_path, self.chaindata_path)
         ):
             if len(header.Extra) > 0:
-                print(height, header.Extra)
+                database_event_sender.send_pyobj(EthereumDataMessage(header.Extra, header.TxHash, DATATYPE.TX_DATA, height))
+
+        print("\n\n Completed Ethereum Parsing \n\n")

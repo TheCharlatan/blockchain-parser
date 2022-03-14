@@ -5,7 +5,7 @@ from database import BLOCKCHAIN, Database, coinStringToCoin
 import binascii
 import argparse
 from ethereum_parser import EthereumParser
-from detector import Detector
+from analyzer import Analyzer, Detector
 
 from monero_parser import MoneroParser
 from parser import DataExtractor
@@ -36,11 +36,21 @@ def parse(blockchain: str, raw_coin_path: str, database_name: str) -> None:
     parser.parse_and_extract_blockchain(database)
     return
 
-def analyze(blockchain_raw: str, database_path: str) -> None:
+def analyze(blockchain_raw: str, database_path: str, detector_raw: str) -> None:
+    detector: Detector
+    if detector_raw == "native_strings":
+        detector = Detector.native_strings
+    elif detector_raw == "gnu_strings":
+        detector = Detector.gnu_strings
+    elif detector_raw == "files":
+        detector = Detector.files
+    else:
+        raise BaseException("invalid detector argument for analyze")
+
     blockchain = coinStringToCoin(blockchain_raw)
     database = Database(database_path)
-    analyzer = Detector(blockchain, database)
-    analyzer.analyze()
+    analyzer = Analyzer(blockchain, database)
+    analyzer.analyze(detector)
     return
 
 
@@ -59,14 +69,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-b",
         "--blockchain",
-        default="bitcoin_mainnet",
-        coices=("bitcoin_mainnet", "bitcoin_testnet3", "bitcoin_regtest", "monero_mainnet", "monero_stagenet", "monero_testnet", "ethereum_mainnet"),
+        choices=("bitcoin_mainnet", "bitcoin_testnet3", "bitcoin_regtest", "monero_mainnet", "monero_stagenet", "monero_testnet", "ethereum_mainnet"),
         help="Coin to target. Required argument, only single targets are allowed."
     )
     parser.add_argument(
         "-p",
         "--parse",
-        default="/home/drgrid/.bitcoin",
         help="""Run the tool in parse mode to collect blockchain data, requires the blockchain data directory as argument, e.g
                 /home/drgrid/.ethereum
                 /home/drgrid/.bitmonero
@@ -77,7 +85,7 @@ if __name__ == "__main__":
         "-a",
         "--analyze",
         help="Run the tool in analysis mode to detect specific data types",
-        choices=("ascii", "files")
+        choices=("native_strings", "gnu_strings", "files")
     )
     parser.add_argument(
         "-v",
@@ -85,29 +93,23 @@ if __name__ == "__main__":
         action="store_true",
         help="Run the to tool in view mode to further analysis"
     )
-    parser.add_argument(
-        "-c",
-        "--criteria",
-        default="ascii",
-        help="""analysis criteria to run against. Valid arguments are: \n
-            ascii |
-            files"""
-    )
+
 
     # Parse the command line arguments
     args = parser.parse_args()
-    path = args.data_dir
 
-    if args.parse is not None or args.parse is True:
+    if args.parse is not None:
+        if args.blockchain is None:
+            raise BaseException("require a blockchain argument for parse mode")
         parse(args.blockchain, args.parse, args.database)
-    if args.analyze == "acsii" or args.analyze == "files":
-        analyze(args.blockchain, args.database)
+    elif args.analyze == "acsii" or args.analyze == "files":
+        analyze(args.blockchain, args.database, args.analyze)
     elif args.view:
         raise BaseException("view mode not implemented yet")
     else:
         raise BaseException("require a mode to run in")
 
-    # Retrieve and prine some results
+    # Retrieve and print some results
     # results = database.get_data(DATATYPE.SCRIPT_SIG)
     # for result in results:
     #     for potential_string in result:

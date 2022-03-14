@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Union
 from ethereum_freezer_tables import FreezerBodiesTable, FreezerHeadersTable
 from ethereum_leveldb_tables import EthLevelDB
@@ -18,6 +19,9 @@ class ParseEthereumBlockHeaders:
         if header is None:
             raise Exception(f"header not found for block height: {number}")
         return header
+
+    def __iter__(self) -> ParseEthereumBlockHeaders:
+        return self
 
     def __next__(self) -> Header:
         try:
@@ -42,6 +46,9 @@ class ParseEthereumBlockBodies:
         if body is None:
             raise Exception(f"body not found for block height: {number}")
         return body
+
+    def __iter__(self) -> ParseEthereumBlockBodies:
+        return self
 
     def __next__(self) -> Body:
         try:

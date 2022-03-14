@@ -18,7 +18,7 @@ class MoneroParserMessage(NamedTuple):
 
 class MoneroDataMessage(NamedTuple):
     counter: int
-    extra_bytes: List[bytes]
+    extra_bytes_list: List[bytes]
     monero_tx_indices: List[xmr.TxIndex]
 
 
@@ -82,7 +82,7 @@ class DatabaseWriter(threading.Thread):
 
         while True:
             message: MoneroDataMessage = self._receiver.recv_pyobj()
-            print("writing " + self._coin)
+            print("writing " + self._coin.value)
             records = []
 
             for i in range(len(message.extra_bytes_list)):
@@ -264,4 +264,4 @@ class MoneroParser(DataExtractor):
                     values = []
                     print(counter)
 
-            print("\n\nCompleted Monero Database parsing\n\n")
+            print("\n\nCompleted Monero parsing\n\n")

@@ -1,8 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor
+import enum
 import string
 import subprocess
 import threading
-from typing import Callable, Optional
+from typing import Optional
 import magic
 import imghdr
 import bitcoin.rpc
@@ -10,17 +11,19 @@ from monero.transaction import ExtraParser
 
 import zmq
 
-from database import BLOCKCHAIN, Database, DetectorPayload, DetectedDataPayload
+from database import BLOCKCHAIN, Database, DetectorFunc, DetectorPayload, DetectedDataPayload
 
 
-def detector_worker(sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload], detector_payload: DetectorPayload) -> None:
+def analysis_worker(sender: zmq.Socket, detector: DetectorFunc, detector_payload: DetectorPayload) -> None:
     detected_data = detector(detector_payload)
+    if detected_data is None:
+        return
     if detected_data.data_length > 1:
         sender.send_pyobj(detected_data)
 
 
-class DetectorInstance(threading.Thread):
-    def __init__(self, receiver: zmq.Socket, sender: zmq.Socket, detector: Callable[[DetectorPayload], DetectedDataPayload]):
+class AnalyzerInstance(threading.Thread):
+    def __init__(self, receiver: zmq.Socket, sender: zmq.Socket, detector: DetectorFunc):
         self._receiver = receiver
         self._sender = sender
         self._detector = detector
@@ -31,7 +34,7 @@ class DetectorInstance(threading.Thread):
         while True:
             detector_payload: DetectorPayload = self._receiver.recv_pyobj()
             # executor.submit(detector_worker, (self._sender, self._detector, detector_payload))
-            executor.submit(detector_worker(self._sender, self._detector, detector_payload))
+            executor.submit(analysis_worker(self._sender, self._detector, detector_payload))
 
 
 def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
@@ -171,8 +174,6 @@ def monero_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[D
         return None
     print(res, detector_payload.txid, "not offset")
 
-
-
     return DetectedDataPayload("", "", 0, 0)
 
 
@@ -218,13 +219,34 @@ def bitcoin_find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
     return ""
 
 
-class Detector:
-    def __init__(self, coin: BLOCKCHAIN, database: Database):
-        self._coin = coin
+class Detector(enum.Enum):
+    native_strings = "native_strings"
+    gnu_strings = "gnu_strings"
+    files = "files"
+
+
+class Analyzer:
+    def __init__(self, blockchain: Optional[BLOCKCHAIN], database: Database):
+        self._blockchain = blockchain
         self._database = database
 
-    def analyze(self) -> None:
+    def analyze(self, detector: Detector) -> None:
         context = zmq.Context()
+
+        detector_func: DetectorFunc 
+        if detector == Detector.native_strings:
+            detector_func = native_strings
+        elif detector == Detector.gnu_strings:
+            detector_func = gnu_strings
+        elif detector == Detector.files:
+            if self._blockchain is not None:
+                if "monero" in self._blockchain.value:
+                    detector_func = monero_find_file_with_magic
+                else:
+                    raise BaseException("no detector implementation for this blockchain / detector tuple")
+            else:
+                detector_func = find_file_with_magic
+
 
         detector_event_sender = context.socket(zmq.PAIR)
         detector_event_receiver = context.socket(zmq.PAIR)
@@ -236,9 +258,4 @@ class Detector:
         database_event_sender.bind("inproc://database_bridge")
         database_event_receiver.connect("inproc://database_bridge")
 
-        detector_instance = DetectorInstance(detector_event_receiver, database_event_sender, gnu_strings)
-        detector_instance.start()
-        # writer_instance = DetectedDataWriter(database_event_receiver, self._database)
-        # writer_instance.start()
-        # self._database.run_detection(detector_event_sender, database_event_receiver)
-        self._database.run_detection(monero_find_file_with_magic)
+        self._database.run_detection(detector_func, self._blockchain)
