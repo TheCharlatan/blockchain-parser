@@ -48,7 +48,8 @@ how to configure the correct environment variables for pyenv.
 Install pipenv:
 
 ```
-sudo apt install pipenv
+pyenv global 3.7.0
+pip install pipenv
 ```
 
 ### Install dependencies with pipenv

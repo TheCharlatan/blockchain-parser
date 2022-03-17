@@ -76,9 +76,9 @@ if __name__ == "__main__":
         "-p",
         "--parse",
         help="""Run the tool in parse mode to collect blockchain data, requires the blockchain data directory as argument, e.g
-                /home/drgrid/.ethereum
-                /home/drgrid/.bitmonero
-                /home/drgrid/.bitcoin
+                ~/.ethereum
+                ~/.bitmonero
+                ~/.bitcoin
             """
     )
     parser.add_argument(
