@@ -126,6 +126,8 @@ class FreezerTable:
         self.headBytes = contentSize
         self.items = self.itemOffset + int(offsetsSize / indexEntrySize - 1)
         self.headId = lastIndex.filenum
+        for i in range(lastIndex.filenum):
+            self.openFile(i)
 
     def openFile(self, num: int) -> str:
         """ Doesn't actually open a file, but constructs the correct filename and fills the table 
@@ -177,7 +179,6 @@ class FreezerTable:
         """" Reads up to 'count' items from the table. Reads at least one itme, but otherwise avoids 
         reading more than maxBytes bytes. Return the (potentially compressed) data, and the sizes 
         """
-
         # Ensure the table is initialized
         if self.index is None or self.head is None:
             raise Exception("table not open")
@@ -202,6 +203,8 @@ class FreezerTable:
                 output.extend(f.read(length))
 
         indices = self.getIndices(start, count)
+
+        # print("indices:", indices)
 
         sizes = []
         totalSize = 0

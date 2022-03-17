@@ -126,9 +126,7 @@ class EthereumParser(DataExtractor):
 
                 database_event_sender.send_pyobj(EthereumDataMessage(tx.data, tx.hash(), DATATYPE.TX_DATA, height))
 
-            if height == 500000:
-                print("reached end of block body parsing, flipping to header parsing")
-                break
+        print("done parsing ethereum blocks, now parsing ethereum headers")
 
         for height, header in enumerate(
             ParseEthereumBlockHeaders(self._ancient_chaindata_path, self._chaindata_path)

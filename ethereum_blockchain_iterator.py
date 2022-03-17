@@ -39,10 +39,13 @@ class ParseEthereumBlockBodies:
         self.value = 0
 
     def get_body(self, number: int) -> Body:
+        # print("getting block body:", number)
         try:
             body: Union[Body, None] = self.eth_freezer_table.get_body_by_height(number)
+            # print("body:", body)
         except:
             body = self.eth_leveldb.get_body_by_height(number)
+            # print("body:", body)
         if body is None:
             raise Exception(f"body not found for block height: {number}")
         return body
