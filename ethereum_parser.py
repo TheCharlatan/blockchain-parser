@@ -84,7 +84,7 @@ class DatabaseWriter(threading.Thread):
             ))
 
             if len(records) > 500:
-                print("writing to DB...")
+                print("writing to DB...", records[0][4])
                 self._db.insert_records(records)
                 records = []
 
