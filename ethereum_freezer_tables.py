@@ -204,8 +204,6 @@ class FreezerTable:
 
         indices = self.getIndices(start, count)
 
-        # print("indices:", indices)
-
         sizes = []
         totalSize = 0
         readStart = indices[0].offset
@@ -218,12 +216,14 @@ class FreezerTable:
             size = int(offset2 - offset1)
             # Crossing a file boundary?
             if secondIndex.filenum != firstIndex.filenum:
+                print("boundary indices:", indices)
                 # If we have unread data in the first file, we need to do that read now
                 if unreadSize > 0:
                     readData(firstIndex.filenum, readStart, unreadSize, output)
                     outputSize += unreadSize
                     unreadSize = 0
-                    readStart = 0
+                readStart = 0
+
             if i > 0 and (totalSize + size) > maxBytes:
                 # About to break out due ot byte limit being exceeded. We don't
                 # read this last item, but we need to do the deferred reads now.
