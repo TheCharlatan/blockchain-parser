@@ -10,21 +10,23 @@ from analyzer import Analyzer, Detector
 from monero_parser import MoneroParser
 from parser import DataExtractor
 
+from view import View, ViewMode
+
 def unhexlify_str(h: str) -> bytes:
     return binascii.unhexlify(h.encode("ascii"))
 
 
-def parse(blockchain: str, raw_coin_path: str, database_name: str) -> None:
+def parse(blockchain_raw: str, raw_coin_path: str, database_name: str) -> None:
     coin_path = Path(raw_coin_path)
     # Create a parser
     parser: DataExtractor
-    if "bitcoin" in blockchain:
+    if "bitcoin" in blockchain_raw:
         parser = BitcoinParser(
             coin_path, BLOCKCHAIN.BITCOIN_REGTEST)
-    elif "ethereum" in blockchain:
+    elif "ethereum" in blockchain_raw:
         parser = EthereumParser(
             coin_path, BLOCKCHAIN.ETHEREUM_MAINNET)
-    elif "monero" in blockchain:
+    elif "monero" in blockchain_raw:
         parser = MoneroParser(coin_path, BLOCKCHAIN.MONERO_STAGENET)
     else:
         raise BaseException("invalid coin argument in parse method")
@@ -52,6 +54,15 @@ def analyze(blockchain_raw: str, database_path: str, detector_raw: str) -> None:
     analyzer = Analyzer(blockchain, database)
     analyzer.analyze(detector)
     return
+
+def view(blockchain_raw: str, database_path: str, mode_raw: str) -> None:
+    blockchain = coinStringToCoin(blockchain_raw)
+    mode: ViewMode
+    if mode_raw == "ascii_histogram":
+        mode = ViewMode.ASCII_HISTOGRAM
+    database = Database(database_path)
+    view = View(blockchain, database)
+    view.view(mode)
 
 
 if __name__ == "__main__":
@@ -90,8 +101,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v",
         "--view",
-        action="store_true",
-        help="Run the to tool in view mode to further analysis"
+        help="Run the to tool in view mode to further analysis",
+        choices=("ascii_histogram", "file_histogram")
     )
 
 
@@ -102,10 +113,10 @@ if __name__ == "__main__":
         if args.blockchain is None:
             raise BaseException("require a blockchain argument for parse mode")
         parse(args.blockchain, args.parse, args.database)
-    elif args.analyze == "acsii" or args.analyze == "files":
+    elif args.analyze == "ascii" or args.analyze == "files":
         analyze(args.blockchain, args.database, args.analyze)
-    elif args.view:
-        raise BaseException("view mode not implemented yet")
+    elif args.view == "ascii_histogram":
+        view(args.blockchain, args.database, args.view)
     else:
         raise BaseException("require a mode to run in")
 

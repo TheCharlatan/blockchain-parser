@@ -12,6 +12,7 @@ ethereum-etl = "*"
 python-snappy = "*"
 pyzmq = "*"
 monero = "*"
+matplotlib = "*"
 
 [requires]
 python_version = "3.7.0"

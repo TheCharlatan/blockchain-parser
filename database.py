@@ -74,6 +74,10 @@ class CryptoDataRecord(NamedTuple):
     block_height: int
     extra_index: int
 
+class ASCIIHistogram(NamedTuple):
+    string_length: int
+    string_length_count: int
+
 
 DetectorFunc = Callable[[DetectorPayload], Optional[DetectedDataPayload]]
 
@@ -180,6 +184,13 @@ class Database:
         c = conn.cursor()
         c.execute("SELECT data FROM cryptoData WHERE data_type=?",
                   (data_type.value,))
+        results = c.fetchall()
+        return results
+
+    def ascii_histogram(self, blockchain: Optional[BLOCKCHAIN]) -> List[ASCIIHistogram]:
+        conn = sqlite3.connect(self.name)
+        c = conn.cursor()
+        c.execute("SELECT STRING_LENGTH, COUNT(STRING_LENGTH) FROM asciiData GROUP BY STRING_LENGTH ORDER BY STRING_LENGTH")
         results = c.fetchall()
         return results
 
