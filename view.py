@@ -24,10 +24,8 @@ class View:
 
     def ascii_histogram(self):
         result = self._database.ascii_histogram(self._blockchain)
-        print(result)
         lengths = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
-        print(counts, lengths)
         x_pos = np.arange(len(lengths))
 
         lengths_histogram_no_gaps = []
@@ -42,7 +40,6 @@ class View:
         accumulated_string_count = []
         for i in range(34):
             accumulated_string_count.append(np.sum(counts_histogram_no_gaps[i:]))
-        print("minimum string length:", accumulated_string_count)
         accumulated_string_count = np.array(accumulated_string_count)
         minimum_string_lengths= np.arange(10, 10+34)
         x2_pos = np.arange(34)
