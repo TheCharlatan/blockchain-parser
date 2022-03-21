@@ -105,7 +105,7 @@ class Database:
             );"""
             )
             print("Crypto Data Table successfully created")
-        
+  
         c.execute(
             """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='asciiData' """
         )
@@ -121,6 +121,9 @@ class Database:
             )
             print("asciiData Table successfully created")
 
+        c.execute(
+            """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='fileData' """
+        )
         if not c.fetchone()[0] == 1:
             c.execute(
                 """CREATE TABLE fileData(
