@@ -129,8 +129,12 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
     # try again with a potential padding byte removed
     if res == "data":
         res = magic.from_buffer(data[1:])
-    if res == "data" or res == "shared library" or res == "(non-conforming)" or "TeX" in res or "floppy" in res or "GLF_BINARY" in res or "AIN" in res or "Alpha" in res or "vfont" in res or "DOS" in res or "Sun disk" in res or "Group 3" in res or "Logitech" in res or "Solitaire" in res or "old " in res or "SYMMETRY" in res or "DOS/MBR" in res or "AmigaOS" in res or "mumps" in res or "ID tags" in res or "GLS" in res or "dBase IV DBT" in res or "TTComp" in res or "EBCDIC" in res or "MGR bitmap" in res or "CLIPPER" in res or "Dyalog" in res or "PARIX" in res or "AIX" in res or "SysEx" in res or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
+    if res == "data" or res == "shared library" or res == "(non-conforming)" or "Bentley" in res or "huf output" in res or "disk quotas" in res or "PRCS" in res or "PEX" in res or "C64" in res or "lif file" in res or "GHost image" in res or "Linux" in res or "amd" in res or "XENIX" in res or "structured file" in res or "gfxboot" in res or "X11" in res or "cpio" in res or "Squeezed" in res or "compacted" in res or "Quasijarus" in res or "JVT" in res or "Poskanzer" in res or "VISX" in res or "TIM" in res or "PCX" in res or "MSVC" in res or "LZH" in res or "LVM1" in res or "Encore" in res or "ATSC" in res or "BASIC" in res or "frozen file" in res or "dBase" in res or "SCO" in res or "RDI" in res or "PostScript" in res or "Netpbm" in res or "Maple" in res or "i386" in res or "archive data" in res or "Motorola" in res or "FoxPro" in res or "packed data" in res or "fsav" in res or "crunched" in res or "compress'd" in res or "Terse" in res or "SoftQuad" in res or "Sendmail" in res or "OS9" in res or "MySQL" in res or "IRIS" in res or "Java" in res or "SOFF" in res or "PSI " in res or "Clarion" in res or "BIOS" in res or "Atari" in res or "Ai32" in res or "ALAN" in res or "44.1" in res or "Microsoft" in res or "TeX" in res or "floppy" in res or "GLF_BINARY" in res or "AIN" in res or "Alpha" in res or "vfont" in res or "DOS" in res or "Sun disk" in res or "Group 3" in res or "Logitech" in res or "Solitaire" in res or "old " in res or "SYMMETRY" in res or "DOS/MBR" in res or "Amiga" in res or "mumps" in res or "ID tags" in res or "GLS" in res or "dBase IV DBT" in res or "TTComp" in res or "EBCDIC" in res or "MGR bitmap" in res or "CLIPPER" in res or "Dyalog" in res or "PARIX" in res or "AIX" in res or "SysEx" in res or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
         return None
+    if "PGP Secret" in res or 'PGP\\011Secret' in res:
+        return "PGP Secret key"
+    if "PGP symmetric" in res:
+        return "PGP symmetric key encrypted data"
     return res
 
 def get_monero_offset_regex() -> re.Pattern:
@@ -188,14 +192,22 @@ def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_dete
     if res is not None:
         return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
 
-    for op in script:
-        # ignore single op codes
-        if type(op) is int:
-            continue
-        # try finding a file in one of the script arguments
-        res = file_detector_func(op)
+    try:
+        for op in script:
+            # ignore single op codes
+            if type(op) is int:
+                continue
+            # try finding a file in one of the script arguments
+            if type(op) is bitcoin.rpc.bitcoin.bitcoin.core.script.CScriptOp:
+                continue
+            res = file_detector_func(op)
+            if res is not None:
+                return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+    except:
+        res = file_detector_func(script)
         if res is not None:
             return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+        pass
 
     return None
 
