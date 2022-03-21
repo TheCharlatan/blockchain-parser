@@ -104,7 +104,6 @@ class Database:
                 UNIQUE(TXID, EXTRA_INDEX, DATA_TYPE)
             );"""
             )
-
             print("Crypto Data Table successfully created")
         
         c.execute(
@@ -120,7 +119,18 @@ class Database:
                     FOREIGN KEY(TXID, EXTRA_INDEX, DATA_TYPE) REFERENCES cryptoData(TXID, EXTRA_INDEX, DATA_TYPE)
                 );"""
             )
+            print("asciiData Table successfully created")
 
+        if not c.fetchone()[0] == 1:
+            c.execute(
+                """CREATE TABLE fileData(
+                    TXID CHAR(64) NOT NULL,
+                    DATA_TYPE TEXT NOT NULL,
+                    EXTRA_INDEX INTEGER,
+                    FILE_TYPE TEXT NOT NULL,
+                    FOREIGN KEY(TXID, EXTRA_INDEX, DATA_TYPE) REFERENCES cryptoData(TXID, EXTRA_INDEX, DATA_TYPE)
+                );"""
+            )
             print("asciiData Table successfully created")
 
         conn.commit()
@@ -197,7 +207,7 @@ class Database:
 
     def insert_detected_ascii_records(
         self,
-        records : Iterable[DetectedAsciiPayload],
+        records: Iterable[DetectedAsciiPayload],
         conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
@@ -213,7 +223,25 @@ class Database:
         except BaseException:
             print("base exception")
             raise
+        c.close()
 
+    def insert_detected_file_records(
+        self,
+        records: Iterable[DetectedAsciiPayload],
+        conn: sqlite3.Connection
+    ) -> None:
+        c = conn.cursor()
+        try:
+            c.executemany(
+                "INSERT INTO fileData(TXID,DATA_TYPE,EXTRA_INDEX,FILE_TYPE) values (?,?,?,?)",
+                records
+            )
+        except sqlite3.InterfaceError:
+            print("integrity error")
+            return
+        except BaseException:
+            print("base exception")
+            raise
         c.close()
 
     def run_detection(self, detector: DetectorFunc, database_write_func: Callable[[Iterable[NamedTuple], sqlite3.Connection], None], blockchain: Optional[BLOCKCHAIN]) -> None:

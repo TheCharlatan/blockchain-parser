@@ -178,9 +178,8 @@ def monero_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[D
 def monero_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
     return monero_find_file_within_extra(detector_payload, find_file_with_imghdr)
 
-def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]])-> Optional[DetectedFilePayload]:
-
-    script =  bitcoin.core.CSCript(detector_payload.data)
+def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
+    script = bitcoin.rpc.bitcoin.bitcoin.core.CScript(detector_payload.data)
     # try finding a file in the full script
     res = file_detector_func(script)
     if res is not None:
@@ -203,12 +202,24 @@ def bitcoin_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[
 def bitcoin_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
     return bitcoin_find_file_within_script(detector_payload, find_file_with_imghdr)
 
+def ethereum_find_file_within_data(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
+    res = file_detector_func(detector_payload.data)
+    if res is not None:
+        return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+    return None
+
+def ethereum_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+    return ethereum_find_file_within_data(detector_payload, find_file_with_magic)
+
+def ethereum_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+    return ethereum_find_file_within_data(detector_payload, find_file_with_imghdr)
+
 
 class Detector(enum.Enum):
     native_strings = "native_strings"
     gnu_strings = "gnu_strings"
-    files_imghdr = "files_imghdr"
-    files_magic = "files_magic"
+    imghdr_files = "imghdr_files"
+    magic_files = "magic_files"
 
 
 class Analyzer:
@@ -227,22 +238,28 @@ class Analyzer:
         elif detector == Detector.gnu_strings:
             detector_func = gnu_strings
             database_write_func = self._database.insert_detected_ascii_records
-        elif detector == Detector.files_magic:
+        elif detector == Detector.magic_files:
+            database_write_func = self._database.insert_detected_file_records
             if self._blockchain is not None:
                 if "monero" in self._blockchain.value:
                     detector_func = monero_find_file_with_magic
                 elif "bitcoin" in self._blockchain.value:
                     detector_func = bitcoin_find_file_with_magic
+                elif "ethereum" in self._blockchain.value:
+                    detector_func = ethereum_find_file_with_magic
                 else:
                     raise BaseException("no detector implementation for this blockchain / detector tuple")
             else:
                 raise BaseException("no detector implementation for this blockchain / detector tuple")
-        elif detector == Detector.files_imghdr:
+        elif detector == Detector.imghdr_files:
+            database_write_func = self._database.insert_detected_file_records
             if self._blockchain is not None:
                 if "monero" in self._blockchain.value:
                     detector_func = monero_find_file_with_imghdr
                 elif "bitcoin" in self._blockchain.value:
                     detector_func = bitcoin_find_file_with_imghdr
+                elif "ethereum" in self._blockchain.value:
+                    detector_func = ethereum_find_file_with_imghdr
                 else:
                     raise BaseException("no detector implementation for this blockchain / detector tuple")
             else:

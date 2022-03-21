@@ -96,7 +96,7 @@ if __name__ == "__main__":
         "-a",
         "--analyze",
         help="Run the tool in analysis mode to detect specific data types",
-        choices=("native_strings", "gnu_strings", "files")
+        choices=("native_strings", "gnu_strings", "imghdr_files", "magic_files")
     )
     parser.add_argument(
         "-v",
