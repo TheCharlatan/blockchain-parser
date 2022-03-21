@@ -129,7 +129,7 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
     # try again with a potential padding byte removed
     if res == "data":
         res = magic.from_buffer(data[1:])
-    if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
+    if res == "data" or res == "shared library" or res == "(non-conforming)" or "TeX" in res or "floppy" in res or "GLF_BINARY" in res or "AIN" in res or "Alpha" in res or "vfont" in res or "DOS" in res or "Sun disk" in res or "Group 3" in res or "Logitech" in res or "Solitaire" in res or "old " in res or "SYMMETRY" in res or "DOS/MBR" in res or "AmigaOS" in res or "mumps" in res or "ID tags" in res or "GLS" in res or "dBase IV DBT" in res or "TTComp" in res or "EBCDIC" in res or "MGR bitmap" in res or "CLIPPER" in res or "Dyalog" in res or "PARIX" in res or "AIX" in res or "SysEx" in res or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
         return None
     return res
 
@@ -242,7 +242,7 @@ class Analyzer:
             detector_func = gnu_strings
             database_write_func = self._database.insert_detected_ascii_records
         elif detector == Detector.magic_files:
-            database_write_func = self._database.insert_detected_file_records
+            database_write_func = self._database.insert_detected_magic_file_records
             if self._blockchain is not None:
                 if "monero" in self._blockchain.value:
                     detector_func = monero_find_file_with_magic
@@ -255,7 +255,7 @@ class Analyzer:
             else:
                 raise BaseException("no detector implementation for this blockchain / detector tuple")
         elif detector == Detector.imghdr_files:
-            database_write_func = self._database.insert_detected_file_records
+            database_write_func = self._database.insert_detected_imghdr_file_records
             if self._blockchain is not None:
                 if "monero" in self._blockchain.value:
                     detector_func = monero_find_file_with_imghdr

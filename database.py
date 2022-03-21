@@ -122,11 +122,11 @@ class Database:
             print("asciiData Table successfully created")
 
         c.execute(
-            """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='fileData' """
+            """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='magicFileData' """
         )
         if not c.fetchone()[0] == 1:
             c.execute(
-                """CREATE TABLE fileData(
+                """CREATE TABLE magicFileData(
                     TXID CHAR(64) NOT NULL,
                     DATA_TYPE TEXT NOT NULL,
                     EXTRA_INDEX INTEGER,
@@ -134,7 +134,23 @@ class Database:
                     FOREIGN KEY(TXID, EXTRA_INDEX, DATA_TYPE) REFERENCES cryptoData(TXID, EXTRA_INDEX, DATA_TYPE)
                 );"""
             )
-            print("asciiData Table successfully created")
+            print("magicFileData Table successfully created")
+
+        c.execute(
+            """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='imghdrFileData' """
+        )
+        if not c.fetchone()[0] == 1:
+            c.execute(
+                """CREATE TABLE imghdrFileData(
+                    TXID CHAR(64) NOT NULL,
+                    DATA_TYPE TEXT NOT NULL,
+                    EXTRA_INDEX INTEGER,
+                    FILE_TYPE TEXT NOT NULL,
+                    FOREIGN KEY(TXID, EXTRA_INDEX, DATA_TYPE) REFERENCES cryptoData(TXID, EXTRA_INDEX, DATA_TYPE)
+                );"""
+            )
+            print("imghdrFileData Table successfully created")
+
 
         conn.commit()
         conn.close()
@@ -228,7 +244,7 @@ class Database:
             raise
         c.close()
 
-    def insert_detected_file_records(
+    def insert_detected_magic_file_records(
         self,
         records: Iterable[DetectedAsciiPayload],
         conn: sqlite3.Connection
@@ -236,7 +252,7 @@ class Database:
         c = conn.cursor()
         try:
             c.executemany(
-                "INSERT INTO fileData(TXID,DATA_TYPE,EXTRA_INDEX,FILE_TYPE) values (?,?,?,?)",
+                "INSERT INTO magicFileData(TXID,DATA_TYPE,EXTRA_INDEX,FILE_TYPE) values (?,?,?,?)",
                 records
             )
         except sqlite3.InterfaceError:
@@ -246,6 +262,26 @@ class Database:
             print("base exception")
             raise
         c.close()
+
+    def insert_detected_imghdr_file_records(
+        self,
+        records: Iterable[DetectedAsciiPayload],
+        conn: sqlite3.Connection
+    ) -> None:
+        c = conn.cursor()
+        try:
+            c.executemany(
+                "INSERT INTO imghdrFileData(TXID,DATA_TYPE,EXTRA_INDEX,FILE_TYPE) values (?,?,?,?)",
+                records
+            )
+        except sqlite3.InterfaceError:
+            print("integrity error")
+            return
+        except BaseException:
+            print("base exception")
+            raise
+        c.close()
+
 
     def run_detection(self, detector: DetectorFunc, database_write_func: Callable[[Iterable[NamedTuple], sqlite3.Connection], None], blockchain: Optional[BLOCKCHAIN]) -> None:
         conn = sqlite3.connect(self.name)
