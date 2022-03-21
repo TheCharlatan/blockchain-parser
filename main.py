@@ -105,7 +105,6 @@ if __name__ == "__main__":
         choices=("ascii_histogram", "file_histogram")
     )
 
-
     # Parse the command line arguments
     args = parser.parse_args()
 
@@ -119,14 +118,3 @@ if __name__ == "__main__":
         view(args.blockchain, args.database, args.view)
     else:
         raise BaseException("require a mode to run in")
-
-    # Retrieve and print some results
-    # results = database.get_data(DATATYPE.SCRIPT_SIG)
-    # for result in results:
-    #     for potential_string in result:
-    #         print(detectors.gnu_strings(potential_string))
-    #         print(
-    #             detectors.bitcoin_find_file_with_imghdr(
-    #                 bitcoin.core.CScript(potential_string)
-    #             
-    #         )

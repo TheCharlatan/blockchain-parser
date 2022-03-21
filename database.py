@@ -1,6 +1,6 @@
 import enum
 import sqlite3
-from typing import Callable, Iterable, NamedTuple, List, Optional
+from typing import Any, Callable, Iterable, NamedTuple, List, Optional
 
 from eth_typing import BlockNumber
 
@@ -45,13 +45,6 @@ class DATATYPE(enum.Enum):
     TX_DATA = "tx_data"
 
 
-class LABEL(enum.Enum):
-    """Default Data labels"""
-
-    OP_RETURN = "opreturn"
-    TEXT = "text"
-    IMAGE = "image"
-
 class DetectorPayload(NamedTuple):
     txid: str
     data_type: str
@@ -59,11 +52,18 @@ class DetectorPayload(NamedTuple):
     data: bytes
 
 
-class DetectedDataPayload(NamedTuple):
+class DetectedAsciiPayload(NamedTuple):
     txid: str
     data_type: str
     extra_index: int
-    data_length: int
+    detected_data_length: int
+
+
+class DetectedFilePayload(NamedTuple):
+    txid: str
+    data_type: str
+    extra_index: int
+    detected_data_type: str
 
 
 class CryptoDataRecord(NamedTuple):
@@ -74,12 +74,13 @@ class CryptoDataRecord(NamedTuple):
     block_height: int
     extra_index: int
 
+
 class ASCIIHistogram(NamedTuple):
     string_length: int
     string_length_count: int
 
 
-DetectorFunc = Callable[[DetectorPayload], Optional[DetectedDataPayload]]
+DetectorFunc = Callable[[DetectorPayload], Optional[NamedTuple]]
 
 
 class Database:
@@ -196,7 +197,7 @@ class Database:
 
     def insert_detected_ascii_records(
         self,
-        records : Iterable[DetectedDataPayload],
+        records : Iterable[DetectedAsciiPayload],
         conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
@@ -215,32 +216,33 @@ class Database:
 
         c.close()
 
-
-    def run_detection(self, detector: DetectorFunc, blockchain: Optional[BLOCKCHAIN]) -> None:
+    def run_detection(self, detector: DetectorFunc, database_write_func: Callable[[Iterable[NamedTuple], sqlite3.Connection], None], blockchain: Optional[BLOCKCHAIN]) -> None:
         conn = sqlite3.connect(self.name)
         counter = 0
         detected_count = 0
         res = conn.execute("SELECT COUNT(TXID) FROM cryptoData")
         for i in res:
             res = i
-        results = []
         prepared_query = "SELECT * FROM cryptoData"
         if blockchain is not None:
             prepared_query += "WHERE COIN=blockchain.value"
+        results = []
         for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
             counter += 1
             detected = detector(DetectorPayload(txid, data_type, extra_index, data))
             if detected is None:
                 continue
-            if detected.data_length > 8:
-                detected_count += 1
-                results.append(detected)
-                if len(results) > 100:
-                    print("writing data")
-                    # self.insert_detected_ascii_records(results, conn)
-                    print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
-                    results = []
-            conn.commit()
+            # cache results for future batched write
+            results.append(detected)
+            detected_count += 1
+            if len(results) > 100:
+                database_write_func(results, conn)
+                print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
+                conn.commit()
+                results = []
+
+        # write and commit left-over results
+        database_write_func(results, conn)
+        conn.commit()
         print("\n\n\nCompleted detection!\n\n\n")
         print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
-

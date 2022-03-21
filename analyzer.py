@@ -1,25 +1,26 @@
 from concurrent.futures import ThreadPoolExecutor
 import enum
+import sqlite3
 import string
 import subprocess
 import threading
-from typing import Optional
+from typing import Any, Callable, Iterable, Optional
 import magic
 import imghdr
 import bitcoin.rpc
 from monero.transaction import ExtraParser
+import re
 
 import zmq
 
-from database import BLOCKCHAIN, Database, DetectorFunc, DetectorPayload, DetectedDataPayload
+from database import BLOCKCHAIN, Database, DetectedAsciiPayload, DetectedFilePayload, DetectorFunc, DetectorPayload
 
 
 def analysis_worker(sender: zmq.Socket, detector: DetectorFunc, detector_payload: DetectorPayload) -> None:
     detected_data = detector(detector_payload)
     if detected_data is None:
         return
-    if detected_data.data_length > 1:
-        sender.send_pyobj(detected_data)
+    sender.send_pyobj(detected_data)
 
 
 class AnalyzerInstance(threading.Thread):
@@ -37,7 +38,7 @@ class AnalyzerInstance(threading.Thread):
             executor.submit(analysis_worker(self._sender, self._detector, detector_payload))
 
 
-def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
+def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedAsciiPayload:
     """Find and return a string with the specified minimum size using gnu strings
     :param bytestring: Bytes to be examined.
     :type bytestring: bytes
@@ -61,123 +62,7 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
     print(output)
     length = len(output.decode("ascii").strip())
     print(output.decode("ascii").strip())
-    return DetectedDataPayload(payload.txid, payload.data_type, payload.extra_index, length)
-
-
-def find_file_with_magic(bytestring: bytes) -> str:
-    """Find files with the help of magic numbers
-    :param bytestring: Bytes to be examined.
-    :type bytestring: bytes
-    :return: A string with the file type
-    :rtype: str
-    """
-
-    res = magic.from_buffer(bytestring)
-    for op in bytestring:
-        if type(op) is int:
-            continue
-        res = magic.from_buffer(op)
-        res = magic.from_buffer(op[1:])
-        if res:
-            return res
-
-    return ""
-
-
-def find_file_with_imghdr(bytestring: bytes) -> str:
-    """Find images with the help of imghdr magic numbers
-    :param bytestring: Bytes to be examined.
-    :type bytestring: bytes
-    :return: A string with the file type
-    :rtype: str
-    """
-
-    res = imghdr.what("", bytestring)
-    if res:
-        return res
-    # try again with a potential padding byte removed
-    res = imghdr.what("", bytestring[1:])
-    if res:
-        return res
-    return ""
-
-
-def native_strings(detector_payload: DetectorPayload, min: int = 10) -> DetectedDataPayload:
-    """Find and return a string with the specified minimum size using a python native implementation
-    :param bytestring: Bytes to be examined.
-    :type bytestring: bytes
-    :param min: Minimum length of the to be detected string.
-    :type min: int
-    :return: A string of minimum length min as detected in the bytestring.
-    :rtype: str
-    """
-
-    result = ""
-    for c in detector_payload.data:
-        if chr(c) in string.printable:
-            result += chr(c)
-            continue
-        if len(result) >= min:
-            return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
-
-        result = ""
-    if len(result) >= min:  # catch result at EOF
-        return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
-    return DetectedDataPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, 0)
-
-
-def monero_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedDataPayload]:
-    import re 
-    extra_data = ExtraParser(detector_payload.data)
-    probable_data_index = 0
-    p = re.compile('offset\s(\d+):*')
-    try:
-        res = extra_data.parse()
-        # filter out entries where the nonces are small
-        flag = False
-        # filter out transactions without a payment ID
-        if "nonces" not in res.keys():
-            return None
-        for nonce in res["nonces"]:
-            if len(nonce) > 9:
-                flag = True
-        if not flag:
-            return None
-    # ignore the exceptions, we are only filtering positives anyway
-    except ValueError as err:
-        match = p.match(str(err))
-        if match is None:
-            pass
-        else:
-            if match.group(1) is not None:
-                probable_data_index = int(match.group(1))
-            res = magic.from_buffer(detector_payload.data[probable_data_index:])
-
-            for i in range(len(detector_payload.data[probable_data_index:])):
-                if detector_payload.data[i:i+4] == bytes.fromhex("25504446") or detector_payload.data[i:i+4] == bytes.fromhex("dfbf34eb"):
-                    print("found PDF!")
-
-            if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
-                return None
-
-            print(res, detector_payload.txid, "offset")
-            return DetectedDataPayload("", "", 0, len(res))
-    except BaseException:
-        pass
-
-    for i in range(len(detector_payload.data[probable_data_index:])):
-        if detector_payload.data[i:i+4] == bytes.fromhex("25504446") or detector_payload.data[i:i+4] == bytes.fromhex("dfbf34eb"):
-            print("found PDF!")
-
-    res = magic.from_buffer(detector_payload.data)
-    if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
-        return None
-    print(res, detector_payload.txid, "not offset")
-
-    return DetectedDataPayload("", "", 0, 0)
-
-
-
+    return DetectedAsciiPayload(payload.txid, payload.data_type, payload.extra_index, length)
 
 def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
     """Return true if the script contains the OP_RETURN opcode
@@ -194,35 +79,136 @@ def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
     return ""
 
 
-def bitcoin_find_file_with_imghdr(script: bitcoin.core.CScript) -> str:
-    """Find images with the help of imghdr magic numbers inside of Bitcoin scripts
-        This additional method is defined to allow iteration over different parts of
-        a contiguous Bitcoin script.
-    :param script: Bitcoin CScript to be examined.
-    :type script: bitcoin.core.CScript
-    :return: A string with the file type.
+def native_strings(detector_payload: DetectorPayload, min: int = 10) -> DetectedAsciiPayload:
+    """Find and return a string with the specified minimum size using a python native implementation
+    :param bytestring: Bytes to be examined.
+    :type bytestring: bytes
+    :param min: Minimum length of the to be detected string.
+    :type min: int
+    :return: A string of minimum length min as detected in the bytestring.
     :rtype: str
     """
 
-    # try finding a file in the full script
-    res = find_file_with_imghdr(script)
+    result = ""
+    for c in detector_payload.data:
+        if chr(c) in string.printable:
+            result += chr(c)
+            continue
+        if len(result) >= min:
+            return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
+
+        result = ""
+    if len(result) >= min:  # catch result at EOF
+        return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
+    return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, 0)
+
+
+def find_file_with_imghdr(data: bytes) -> Optional[str]:
+    """Find images with the help of imghdr magic numbers
+    :param bytestring: Bytes to be examined.
+    :type bytestring: bytes
+    :return: A string with the file type
+    :rtype: str
+    """
+
+    res = imghdr.what("", data)
     if res:
         return res
+    # try again with a potential padding byte removed
+    res = imghdr.what("", data[1:])
+    return res
+
+def find_file_with_magic(data: bytes) -> Optional[str]:
+    """Find files with the help of magic numbers library"""
+    if len(data) < 8:
+        return None
+    res = magic.from_buffer(data)
+    # try again with a potential padding byte removed
+    if res == "data":
+        res = magic.from_buffer(data[1:])
+    if res == "data" or res == "shared library" or res == "(non-conforming)" or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "TeX font" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
+        return None
+    return res
+
+def get_monero_offset_regex() -> re.Pattern:
+    return re.compile('offset\s(\d+):*')
+
+def monero_find_file_within_extra(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
+    extra_data = ExtraParser(detector_payload.data)
+    probable_data_index = 0
+    try: 
+        parsed_extra = extra_data.parse()
+        # check every first and second byte in the nonces
+        if "nonces" in parsed_extra.keys():
+            for nonce in parsed_extra["nonces"]:
+                res = file_detector_func(nonce)
+                if res is not None:
+                    return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+        
+        # check every first and second byte in the pubkey
+        if "pubkeys" in parsed_extra.keys():
+            for pubkey in parsed_extra["pubkeys"]:
+                find_file_with_imghdr(pubkey)
+                if res is not None:
+                    return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+
+    except ValueError as err:
+        # get the offset of the non-standard tx extra data
+        match = get_monero_offset_regex().match(str(err))
+        if match is None:
+            pass
+        else:
+            if match.group(1) is not None:
+                probable_data_index = int(match.group(1))
+            res = file_detector_func(detector_payload.data[probable_data_index:])
+            if res is not None:
+                return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+
+    except BaseException:
+        pass
+
+    res = file_detector_func(detector_payload.data)
+    if res is not None:
+        return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+    return None
+
+def monero_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+    return monero_find_file_within_extra(detector_payload, find_file_with_magic)
+
+def monero_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+    return monero_find_file_within_extra(detector_payload, find_file_with_imghdr)
+
+def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]])-> Optional[DetectedFilePayload]:
+
+    script =  bitcoin.core.CSCript(detector_payload.data)
+    # try finding a file in the full script
+    res = file_detector_func(script)
+    if res is not None:
+        return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+
     for op in script:
         # ignore single op codes
         if type(op) is int:
             continue
         # try finding a file in one of the script arguments
-        res = find_file_with_imghdr(op)
-        if res:
-            return res
-    return ""
+        res = file_detector_func(op)
+        if res is not None:
+            return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+
+    return None
+
+def bitcoin_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+    return bitcoin_find_file_within_script(detector_payload, find_file_with_magic)
+
+def bitcoin_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+    return bitcoin_find_file_within_script(detector_payload, find_file_with_imghdr)
 
 
 class Detector(enum.Enum):
     native_strings = "native_strings"
     gnu_strings = "gnu_strings"
-    files = "files"
+    files_imghdr = "files_imghdr"
+    files_magic = "files_magic"
 
 
 class Analyzer:
@@ -234,18 +220,33 @@ class Analyzer:
         context = zmq.Context()
 
         detector_func: DetectorFunc 
+        database_write_func: Callable[[Iterable[Any], sqlite3.Connection], None]
         if detector == Detector.native_strings:
             detector_func = native_strings
+            database_write_func = self._database.insert_detected_ascii_records
         elif detector == Detector.gnu_strings:
             detector_func = gnu_strings
-        elif detector == Detector.files:
+            database_write_func = self._database.insert_detected_ascii_records
+        elif detector == Detector.files_magic:
             if self._blockchain is not None:
                 if "monero" in self._blockchain.value:
                     detector_func = monero_find_file_with_magic
+                elif "bitcoin" in self._blockchain.value:
+                    detector_func = bitcoin_find_file_with_magic
                 else:
                     raise BaseException("no detector implementation for this blockchain / detector tuple")
             else:
-                detector_func = find_file_with_magic
+                raise BaseException("no detector implementation for this blockchain / detector tuple")
+        elif detector == Detector.files_imghdr:
+            if self._blockchain is not None:
+                if "monero" in self._blockchain.value:
+                    detector_func = monero_find_file_with_imghdr
+                elif "bitcoin" in self._blockchain.value:
+                    detector_func = bitcoin_find_file_with_imghdr
+                else:
+                    raise BaseException("no detector implementation for this blockchain / detector tuple")
+            else:
+                raise BaseException("no detector implementation for this blockchain / detector tuple")
 
 
         detector_event_sender = context.socket(zmq.PAIR)
@@ -258,4 +259,4 @@ class Analyzer:
         database_event_sender.bind("inproc://database_bridge")
         database_event_receiver.connect("inproc://database_bridge")
 
-        self._database.run_detection(detector_func, self._blockchain)
+        self._database.run_detection(detector_func, database_write_func, self._blockchain)
