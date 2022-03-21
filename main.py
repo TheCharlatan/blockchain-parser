@@ -29,7 +29,7 @@ def parse(blockchain_raw: str, raw_coin_path: str, database_name: str) -> None:
     elif "monero" in blockchain_raw:
         parser = MoneroParser(coin_path, BLOCKCHAIN.MONERO_STAGENET)
     else:
-        raise BaseException("invalid coin argument in parse method")
+        raise BaseException("invalid blockchain argument in parse method")
 
     # Create a database handler
     database = Database(database_name)

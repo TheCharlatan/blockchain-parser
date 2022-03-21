@@ -33,7 +33,7 @@ def coinStringToCoin(name: str) -> BLOCKCHAIN:
     elif name == "ethereum_mainnet":
         return BLOCKCHAIN.ETHEREUM_MAINNET
     else:
-        raise BaseException("invalid coin name")
+        raise BaseException("invalid blockchain name")
 
 
 class DATATYPE(enum.Enum):
