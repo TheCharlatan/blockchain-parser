@@ -44,8 +44,10 @@ def analyze(blockchain_raw: str, database_path: str, detector_raw: str) -> None:
         detector = Detector.native_strings
     elif detector_raw == "gnu_strings":
         detector = Detector.gnu_strings
-    elif detector_raw == "files":
-        detector = Detector.files
+    elif detector_raw == "imghdr_files":
+        detector = Detector.imghdr_files
+    elif detector_raw == "magic_files":
+        detector = Detector.magic_files
     else:
         raise BaseException("invalid detector argument for analyze")
 
@@ -112,7 +114,7 @@ if __name__ == "__main__":
         if args.blockchain is None:
             raise BaseException("require a blockchain argument for parse mode")
         parse(args.blockchain, args.parse, args.database)
-    elif args.analyze == "ascii" or args.analyze == "files":
+    elif "strings" in args.analyze or "files" in args.analyze:
         analyze(args.blockchain, args.database, args.analyze)
     elif args.view == "ascii_histogram":
         view(args.blockchain, args.database, args.view)

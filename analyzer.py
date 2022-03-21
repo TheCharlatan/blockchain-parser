@@ -38,7 +38,7 @@ class AnalyzerInstance(threading.Thread):
             executor.submit(analysis_worker(self._sender, self._detector, detector_payload))
 
 
-def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedAsciiPayload:
+def gnu_strings(payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsciiPayload]:
     """Find and return a string with the specified minimum size using gnu strings
     :param bytestring: Bytes to be examined.
     :type bytestring: bytes
@@ -62,7 +62,10 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> DetectedAsciiPayload
     print(output)
     length = len(output.decode("ascii").strip())
     print(output.decode("ascii").strip())
-    return DetectedAsciiPayload(payload.txid, payload.data_type, payload.extra_index, length)
+    if length >= min:
+        return DetectedAsciiPayload(payload.txid, payload.data_type, payload.extra_index, length)
+    return None
+
 
 def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
     """Return true if the script contains the OP_RETURN opcode
@@ -79,7 +82,7 @@ def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
     return ""
 
 
-def native_strings(detector_payload: DetectorPayload, min: int = 10) -> DetectedAsciiPayload:
+def native_strings(detector_payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsciiPayload]:
     """Find and return a string with the specified minimum size using a python native implementation
     :param bytestring: Bytes to be examined.
     :type bytestring: bytes
@@ -100,7 +103,7 @@ def native_strings(detector_payload: DetectorPayload, min: int = 10) -> Detected
         result = ""
     if len(result) >= min:  # catch result at EOF
         return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
-    return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, 0)
+    return None
 
 
 def find_file_with_imghdr(data: bytes) -> Optional[str]:
