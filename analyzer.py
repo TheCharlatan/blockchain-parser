@@ -7,35 +7,13 @@ import threading
 from typing import Any, Callable, Iterable, Optional
 import magic
 import imghdr
-import bitcoin.rpc
+from bitcoin.core import CScript, script
 from monero.transaction import ExtraParser
 import re
 
 import zmq
 
 from database import BLOCKCHAIN, Database, DatabaseWriteFunc, DetectedAsciiPayload, DetectedFilePayload, DetectorFunc, DetectorPayload
-
-
-def analysis_worker(sender: zmq.Socket, detector: DetectorFunc, detector_payload: DetectorPayload) -> None:
-    detected_data = detector(detector_payload)
-    if detected_data is None:
-        return
-    sender.send_pyobj(detected_data)
-
-
-class AnalyzerInstance(threading.Thread):
-    def __init__(self, receiver: zmq.Socket, sender: zmq.Socket, detector: DetectorFunc):
-        self._receiver = receiver
-        self._sender = sender
-        self._detector = detector
-        threading.Thread.__init__(self)
- 
-    def run(self) -> None:
-        executor = ThreadPoolExecutor(10)
-        while True:
-            detector_payload: DetectorPayload = self._receiver.recv_pyobj()
-            # executor.submit(detector_worker, (self._sender, self._detector, detector_payload))
-            executor.submit(analysis_worker(self._sender, self._detector, detector_payload))
 
 
 def gnu_strings(payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsciiPayload]:
@@ -47,27 +25,19 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsc
     :return: A string of minimum length min as detected in the bytestring.
     :rtype: str
     """
-
     cmd = "strings -n {}".format(min)
-    process = subprocess.Popen(
-        cmd,
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        stdin=subprocess.PIPE,
-    )
+    process = subprocess.Popen( cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
     assert process.stdin is not None
     process.stdin.write(payload.data)
     output = process.communicate()[0]
-    print(output)
-    length = len(output.decode("ascii").strip())
-    print(output.decode("ascii").strip())
-    if length >= min:
-        return DetectedAsciiPayload(payload.txid, payload.data_type, payload.extra_index, length)
-    return None
+    output_str = output.decode("ascii").strip()
+    length = len(output_str)
+    if length < min:
+        return None
+    return DetectedAsciiPayload(payload.txid, payload.data_type, payload.extra_index, length)
 
 
-def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
+def bitcoin_detect_op_return_output(cscript: CScript) -> str:
     """Return true if the script contains the OP_RETURN opcode
     :param script: Bitcoin CScript to be examined.
     :type script: bitcoin.core.script.CScript
@@ -75,21 +45,21 @@ def bitcoin_detect_op_return_output(script: bitcoin.core.script.CScript) -> str:
     :rtype: str
     """
 
-    for elem in script.raw_iter():
+    for elem in cscript.raw_iter():
         for code in elem:
-            if code == bitcoin.core.script.OP_RETURN:
+            if code == script.OP_RETURN:
                 return "OP_RETURN"
     return ""
 
 
 def native_strings(detector_payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsciiPayload]:
     """Find and return a string with the specified minimum size using a python native implementation
-    :param bytestring: Bytes to be examined.
-    :type bytestring: bytes
+    :param detector_payload: Contains data to be examined.
+    :type detector_payload: DetectorPayload
     :param min: Minimum length of the to be detected string.
     :type min: int
-    :return: A string of minimum length min as detected in the bytestring.
-    :rtype: str
+    :return: DetectedAsciiPayload if detected, None if not.
+    :rtype: Optional[DetectedAsciiPayload]
     """
 
     result = ""
@@ -101,9 +71,9 @@ def native_strings(detector_payload: DetectorPayload, min: int = 10) -> Optional
             return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
 
         result = ""
-    if len(result) >= min:  # catch result at EOF
-        return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
-    return None
+    if len(result) < min:  # catch result at EOF
+        return None
+    return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
 
 
 def find_file_with_imghdr(data: bytes) -> Optional[str]:
@@ -163,7 +133,7 @@ def monero_find_file_within_extra(detector_payload: DetectorPayload, file_detect
         # check every first and second byte in the pubkey
         if "pubkeys" in parsed_extra.keys():
             for pubkey in parsed_extra["pubkeys"]:
-                find_file_with_imghdr(pubkey)
+                res = file_detector_func(pubkey)
                 if res is not None:
                     return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
 
@@ -194,29 +164,27 @@ def monero_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[
     return monero_find_file_within_extra(detector_payload, find_file_with_imghdr)
 
 def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
-    script = bitcoin.rpc.bitcoin.bitcoin.core.CScript(detector_payload.data)
+    cscript = CScript(detector_payload.data)
     # try finding a file in the full script
-    res = file_detector_func(script)
+    res = file_detector_func(cscript)
     if res is not None:
         return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
-
     try:
-        for op in script:
+        for op in cscript:
             # ignore single op codes
             if type(op) is int:
                 continue
             # try finding a file in one of the script arguments
-            if type(op) is bitcoin.rpc.bitcoin.bitcoin.core.script.CScriptOp:
+            if type(op) is script.CScriptOp:
                 continue
             res = file_detector_func(op)
             if res is not None:
                 return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
     except:
-        res = file_detector_func(script)
+        res = file_detector_func(cscript)
         if res is not None:
             return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
         pass
-
     return None
 
 def bitcoin_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
@@ -251,8 +219,6 @@ class Analyzer:
         self._database = database
 
     def analyze(self, detector: Detector) -> None:
-        context = zmq.Context()
-
         detector_func: DetectorFunc 
         database_write_func: DatabaseWriteFunc
         if detector == Detector.native_strings:
@@ -287,16 +253,5 @@ class Analyzer:
                     raise BaseException("no detector implementation for this blockchain / detector tuple")
             else:
                 raise BaseException("no detector implementation for this blockchain / detector tuple")
-
-
-        detector_event_sender = context.socket(zmq.PAIR)
-        detector_event_receiver = context.socket(zmq.PAIR)
-        detector_event_sender.bind("inproc://detector_bridge")
-        detector_event_receiver.connect("inproc://detector_bridge")
-
-        database_event_sender = context.socket(zmq.PAIR)
-        database_event_receiver = context.socket(zmq.PAIR)
-        database_event_sender.bind("inproc://database_bridge")
-        database_event_receiver.connect("inproc://database_bridge")
 
         self._database.run_detection(detector_func, database_write_func, self._blockchain)
