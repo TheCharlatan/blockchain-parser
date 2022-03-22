@@ -1,6 +1,6 @@
 import enum
 import sqlite3
-from typing import Any, Callable, Iterable, NamedTuple, List, Optional
+from typing import Any, Callable, Iterable, NamedTuple, List, Optional, Sequence
 
 from eth_typing import BlockNumber
 
@@ -79,9 +79,9 @@ class ASCIIHistogram(NamedTuple):
     string_length: int
     string_length_count: int
 
-
 DetectorFunc = Callable[[DetectorPayload], Optional[NamedTuple]]
 
+DatabaseWriteFunc = Callable[[Sequence[Any], sqlite3.Connection], None]
 
 class Database:
     def __init__(self, name: str) -> None:
@@ -226,7 +226,7 @@ class Database:
 
     def insert_detected_ascii_records(
         self,
-        records: Iterable[DetectedAsciiPayload],
+        records: Sequence[DetectedAsciiPayload],
         conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
@@ -246,7 +246,7 @@ class Database:
 
     def insert_detected_magic_file_records(
         self,
-        records: Iterable[DetectedAsciiPayload],
+        records: Sequence[DetectedAsciiPayload],
         conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
@@ -265,7 +265,7 @@ class Database:
 
     def insert_detected_imghdr_file_records(
         self,
-        records: Iterable[DetectedAsciiPayload],
+        records: Sequence[DetectedAsciiPayload],
         conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
@@ -283,7 +283,7 @@ class Database:
         c.close()
 
 
-    def run_detection(self, detector: DetectorFunc, database_write_func: Callable[[Iterable[NamedTuple], sqlite3.Connection], None], blockchain: Optional[BLOCKCHAIN]) -> None:
+    def run_detection(self, detector: DetectorFunc, database_write_func: DatabaseWriteFunc, blockchain: Optional[BLOCKCHAIN]) -> None:
         conn = sqlite3.connect(self.name)
         counter = 0
         detected_count = 0

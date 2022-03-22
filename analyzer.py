@@ -13,7 +13,7 @@ import re
 
 import zmq
 
-from database import BLOCKCHAIN, Database, DetectedAsciiPayload, DetectedFilePayload, DetectorFunc, DetectorPayload
+from database import BLOCKCHAIN, Database, DatabaseWriteFunc, DetectedAsciiPayload, DetectedFilePayload, DetectorFunc, DetectorPayload
 
 
 def analysis_worker(sender: zmq.Socket, detector: DetectorFunc, detector_payload: DetectorPayload) -> None:
@@ -254,7 +254,7 @@ class Analyzer:
         context = zmq.Context()
 
         detector_func: DetectorFunc 
-        database_write_func: Callable[[Iterable[Any], sqlite3.Connection], None]
+        database_write_func: DatabaseWriteFunc
         if detector == Detector.native_strings:
             detector_func = native_strings
             database_write_func = self._database.insert_detected_ascii_records

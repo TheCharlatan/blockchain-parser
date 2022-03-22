@@ -242,31 +242,27 @@ class MoneroParser(DataExtractor):
         writer = DatabaseWriter(database, database_event_receiver, self.blockchain)
         writer.start()
 
-        values = []
+        tx_indices_cache = []
         counter = 0
         with env.begin(write=False) as txn:
-            for _, value in txn.cursor(db=index_db):
+            for _, tx_index in txn.cursor(db=index_db):
                 counter += 1
-                values.append(value)
-                if len(values) == 10000:
+                tx_indices_cache.append(tx_index)
+                if len(tx_indices_cache) == 10000:
 
                     # Get the TxIndex struct from the database value
                     monero_tx_indices: List[xmr.TxIndex] = asyncio.get_event_loop().run_until_complete(
-                        deserialize_tx_indices(values)
+                        deserialize_tx_indices(tx_indices_cache)
                     )
 
                     # translate the tx index back to bytes for retrieval of the full transaction
                     db_tx_indices: List[bytes] = [monero_tx_index.data.tx_id.to_bytes(8, "little") for monero_tx_index in monero_tx_indices]
 
-                    print("getting monero transaction")
                     # Get the full transaction from the database with the transaction id bytes
                     cursor = txn.cursor(db=tx_db)
                     monero_txs_raw: List[bytes] = cursor.getmulti(db_tx_indices)
                     cursor.close()
-                    print("got monero transaction")
                     tx_parser_event_sender.send_pyobj(MoneroParserMessage(counter, monero_txs_raw, monero_tx_indices))
-
-                    values = []
-                    print(counter)
+                    tx_indices_cache = []
 
             print("\n\nCompleted Monero parsing\n\n")
