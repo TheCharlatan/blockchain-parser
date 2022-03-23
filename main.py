@@ -83,7 +83,7 @@ if __name__ == "__main__":
         "-b",
         "--blockchain",
         choices=("bitcoin_mainnet", "bitcoin_testnet3", "bitcoin_regtest", "monero_mainnet", "monero_stagenet", "monero_testnet", "ethereum_mainnet"),
-        help="Coin to target. Required argument, only single targets are allowed."
+        help="Blockchain to target. Required argument, only single targets are allowed."
     )
     parser.add_argument(
         "-p",
