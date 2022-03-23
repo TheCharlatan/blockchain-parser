@@ -16,12 +16,13 @@ class ViewMode(enum.Enum):
 
 class View:
     def get_matplotlib_color_from_blockchain(self) -> str:
-        if "monero" in self._blockchain.value:
-            return "black"
-        elif "eth" in self._blockchain.value:
-            return "blue"
-        elif "bitcoin" in self._blockchain.value:
-            return "orange"
+        if self._blockchain is not None:
+            if "monero" in self._blockchain.value:
+                return "black"
+            elif "eth" in self._blockchain.value:
+                return "blue"
+            elif "bitcoin" in self._blockchain.value:
+                return "orange"
         return "mediumblue"
 
     def ascii_histogram(self):
