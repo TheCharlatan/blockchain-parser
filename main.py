@@ -62,6 +62,10 @@ def view(blockchain_raw: str, database_path: str, mode_raw: str) -> None:
     mode: ViewMode
     if mode_raw == "ascii_histogram":
         mode = ViewMode.ASCII_HISTOGRAM
+    elif mode_raw == "magic_file_histogram":
+        mode = ViewMode.MAGIC_FILE_HISTOGRAM
+    elif mode_raw == "imghdr_file_histogram":
+        mode = ViewMode.IMGHDR_FILE_HISTOGRAM
     database = Database(database_path)
     view = View(blockchain, database)
     view.view(mode)
@@ -104,7 +108,7 @@ if __name__ == "__main__":
         "-v",
         "--view",
         help="Run the to tool in view mode to further analysis",
-        choices=("ascii_histogram", "file_histogram")
+        choices=("ascii_histogram", "magic_file_histogram", "imghdr_file_histogram")
     )
 
     # Parse the command line arguments
@@ -114,9 +118,9 @@ if __name__ == "__main__":
         if args.blockchain is None:
             raise BaseException("require a blockchain argument for parse mode")
         parse(args.blockchain, args.parse, args.database)
-    elif "strings" in args.analyze or "files" in args.analyze:
+    elif args.analyze is not None:
         analyze(args.blockchain, args.database, args.analyze)
-    elif args.view == "ascii_histogram":
+    elif args.view is not None:
         view(args.blockchain, args.database, args.view)
     else:
         raise BaseException("require a mode to run in")

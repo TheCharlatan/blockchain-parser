@@ -79,6 +79,12 @@ class ASCIIHistogram(NamedTuple):
     string_length: int
     string_length_count: int
 
+
+class FileTypeHistogram(NamedTuple):
+    file_type: str
+    file_type_count: int
+
+
 DetectorFunc = Callable[[DetectorPayload], Optional[NamedTuple]]
 
 DatabaseWriteFunc = Callable[[Sequence[Any], sqlite3.Connection], None]
@@ -221,6 +227,20 @@ class Database:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
         c.execute("SELECT STRING_LENGTH, COUNT(STRING_LENGTH) FROM asciiData GROUP BY STRING_LENGTH ORDER BY STRING_LENGTH")
+        results = c.fetchall()
+        return results
+
+    def magic_file_histogram(self, blockchain: Optional[BLOCKCHAIN]) -> List[FileTypeHistogram]:
+        conn = sqlite3.connect(self.name)
+        c = conn.cursor()
+        c.execute("SELECT FILE_TYPE, COUNT(FILE_TYPE) FROM magicFileData GROUP BY FILE_TYPE ORDER BY FILE_TYPE")
+        results = c.fetchall()
+        return results
+
+    def imghdr_file_histogram(self, blockchain: Optional[BLOCKCHAIN]) -> List[FileTypeHistogram]:
+        conn = sqlite3.connect(self.name)
+        c = conn.cursor()
+        c.execute("SELECT FILE_TYPE, COUNT(FILE_TYPE) FROM imghdrFileData GROUP BY FILE_TYPE ORDER BY FILE_TYPE")
         results = c.fetchall()
         return results
 

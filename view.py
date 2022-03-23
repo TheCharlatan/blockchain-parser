@@ -10,6 +10,8 @@ import numpy as np
 
 class ViewMode(enum.Enum):
     ASCII_HISTOGRAM = "ascii_histogram"
+    MAGIC_FILE_HISTOGRAM = "magic_file_histogram"
+    IMGHDR_FILE_HISTOGRAM = "imghdr_file_histogram"
 
 
 class View:
@@ -65,6 +67,14 @@ class View:
         plt.savefig("asci_histogram_" + self._blockchain.value, dpi=300)
         plt.show()
 
+    def magic_file_histogram(self):
+        result = self._database.magic_file_histogram(self._blockchain)
+        print(result)
+
+    def imghdr_file_histogram(self):
+        result = self._database.imghdr_file_histogram(self._blockchain)
+        print(result)
+
     def __init__(self, blockchain: Optional[BLOCKCHAIN], database: Database):
         self._blockchain = blockchain
         self._database = database
@@ -72,3 +82,5 @@ class View:
     def view(self, mode: ViewMode) -> None:
         if mode == ViewMode.ASCII_HISTOGRAM:
             self.ascii_histogram()
+        elif mode == ViewMode.MAGIC_FILE_HISTOGRAM:
+            self.magic_file_histogram()
