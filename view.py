@@ -47,7 +47,6 @@ class View:
         accumulated_string_count = np.array(accumulated_string_count)
         minimum_string_lengths= np.arange(10, 10+34)
         x2_pos = np.arange(34)
-
         color = self.get_matplotlib_color_from_blockchain()
 
         fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes]] = plt.subplots(2)
@@ -67,7 +66,7 @@ class View:
         ax2.set_ylabel("counts")
         ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
         plt.setp(ax2.get_xticklabels(), fontsize=7, rotation='horizontal')
-        plt.subplots_adjust(hspace=0.45)
+        plt.subplots_adjust(hspace=0.43)
 
         plt.savefig("ascii_histogram_" + self._blockchain.value, dpi=1200)
         plt.show()
@@ -78,9 +77,54 @@ class View:
         counts = np.array(list(map(lambda item: item[1], result)))
         print(file_types, counts, len(file_types), len(counts))
 
+        truncated_file_types = []
+        for file_type in file_types:
+            if len(file_type) > 20:
+                truncated_file_types.append(file_type[:19] + ".")
+            else:
+                truncated_file_types.append(file_type)
+
+        x_pos = np.arange(len(file_types))
+        color = self.get_matplotlib_color_from_blockchain()
+
+        fig_axis_tuple: Tuple[Figure, Axes] = plt.subplots(1)
+        fig, ax1 = fig_axis_tuple
+        ax1.bar(x_pos, counts, color=color)
+        ax1.set_xticks(x_pos, truncated_file_types)
+        ax1.set_yscale("log")
+        ax1.set_ylabel("counts")
+        ax1.set_title(self._blockchain.value + " Count of magic detected file types")
+        plt.setp(ax1.get_xticklabels(), fontsize=12, rotation='vertical')
+        plt.subplots_adjust(bottom=0.41)
+        plt.savefig("magic_file_histogram_" + self._blockchain.value, dpi=1200)
+        plt.show()
+    
     def imghdr_file_histogram(self):
         result = self._database.imghdr_file_histogram(self._blockchain)
-        print(result)
+        file_types = np.array(list(map(lambda item: item[0], result)))
+        counts = np.array(list(map(lambda item: item[1], result)))
+        print(file_types, counts, len(file_types), len(counts))
+
+        truncated_file_types = []
+        for file_type in file_types:
+            if len(file_type) > 20:
+                truncated_file_types.append(file_type[:19] + ".")
+            else:
+                truncated_file_types.append(file_type)
+
+        x_pos = np.arange(len(file_types))
+        color = self.get_matplotlib_color_from_blockchain()
+
+        fig_axis_tuple: Tuple[Figure, Axes] = plt.subplots(1)
+        fig, ax1 = fig_axis_tuple
+        ax1.bar(x_pos, counts, color=color)
+        ax1.set_xticks(x_pos, truncated_file_types)
+        ax1.set_yscale("log")
+        ax1.set_ylabel("counts")
+        ax1.set_title(self._blockchain.value + " Count of imghdr detected file types")
+        plt.setp(ax1.get_xticklabels(), fontsize=12, rotation='vertical')
+        plt.savefig("imghdr_file_histogram_" + self._blockchain.value, dpi=1200)
+        plt.show()
 
     def __init__(self, blockchain: Optional[BLOCKCHAIN], database: Database):
         self._blockchain = blockchain
@@ -90,7 +134,7 @@ class View:
         if mode == ViewMode.ASCII_HISTOGRAM:
             self.ascii_histogram()
         elif mode == ViewMode.IMGHDR_FILE_HISTOGRAM:
-            self.magic_file_histogram()
+            self.imghdr_file_histogram()
         elif mode == ViewMode.MAGIC_FILE_HISTOGRAM:
             self.magic_file_histogram()
         elif mode == ViewMode.RECORD_STATS:
