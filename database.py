@@ -84,6 +84,13 @@ class FileTypeHistogram(NamedTuple):
     file_type: str
     file_type_count: int
 
+class RecordStatistics(NamedTuple):
+    distinct_data_rows: int
+    max_block_height: int
+    ascii_data_count: int
+    magic_file_data_count: int
+    imghdr_file_data_count: int
+
 
 DetectorFunc = Callable[[DetectorPayload], Optional[NamedTuple]]
 
@@ -243,6 +250,20 @@ class Database:
         c.execute("SELECT FILE_TYPE, COUNT(FILE_TYPE) FROM imghdrFileData GROUP BY FILE_TYPE ORDER BY FILE_TYPE")
         results = c.fetchall()
         return results
+
+    def get_record_statistics(self, blockchain: Optional[BLOCKCHAIN]) -> RecordStatistics:
+        conn = sqlite3.connect(self.name)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*), MAX(BLOCK_HEIGHT), MAX(LENGTH(DATA)) FROM cryptoData")
+        total_rows, max_block_height, max_length = c.fetchall()[0]
+        print("Maximum data record size:", max_length)
+        c.execute("SELECT COUNT(*) FROM asciiData")
+        total_strings = c.fetchall()[0][0]
+        c.execute("SELECT COUNT(*) FROM magicFileData")
+        total_magic_files = c.fetchall()[0][0]
+        c.execute("SELECT COUNT(*) FROM imghdrFileData")
+        total_imghdr_files = c.fetchall()[0][0]
+        return RecordStatistics(total_rows, max_block_height, total_strings, total_magic_files, total_imghdr_files)
 
     def insert_detected_ascii_records(
         self,

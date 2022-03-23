@@ -12,6 +12,7 @@ class ViewMode(enum.Enum):
     ASCII_HISTOGRAM = "ascii_histogram"
     MAGIC_FILE_HISTOGRAM = "magic_file_histogram"
     IMGHDR_FILE_HISTOGRAM = "imghdr_file_histogram"
+    RECORD_STATS = "record_stats"
 
 
 class View:
@@ -88,5 +89,10 @@ class View:
     def view(self, mode: ViewMode) -> None:
         if mode == ViewMode.ASCII_HISTOGRAM:
             self.ascii_histogram()
+        elif mode == ViewMode.IMGHDR_FILE_HISTOGRAM:
+            self.magic_file_histogram()
         elif mode == ViewMode.MAGIC_FILE_HISTOGRAM:
             self.magic_file_histogram()
+        elif mode == ViewMode.RECORD_STATS:
+            stats = self._database.get_record_statistics(self._blockchain)
+            print(stats)

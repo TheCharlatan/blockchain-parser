@@ -66,6 +66,8 @@ def view(blockchain_raw: str, database_path: str, mode_raw: str) -> None:
         mode = ViewMode.MAGIC_FILE_HISTOGRAM
     elif mode_raw == "imghdr_file_histogram":
         mode = ViewMode.IMGHDR_FILE_HISTOGRAM
+    elif mode_raw == "record_stats":
+        mode = ViewMode.RECORD_STATS
     database = Database(database_path)
     view = View(blockchain, database)
     view.view(mode)
@@ -108,7 +110,7 @@ if __name__ == "__main__":
         "-v",
         "--view",
         help="Run the to tool in view mode to further analysis",
-        choices=("ascii_histogram", "magic_file_histogram", "imghdr_file_histogram")
+        choices=("ascii_histogram", "magic_file_histogram", "imghdr_file_histogram", "record_stats")
     )
 
     # Parse the command line arguments
