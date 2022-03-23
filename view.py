@@ -65,12 +65,14 @@ class View:
         ax2.set_ylabel("counts")
         ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
 
-        plt.savefig("asci_histogram_" + self._blockchain.value, dpi=300)
+        plt.savefig("asci_histogram_" + self._blockchain.value, dpi=600)
         plt.show()
 
     def magic_file_histogram(self):
         result = self._database.magic_file_histogram(self._blockchain)
-        print(result)
+        file_types = np.array(list(map(lambda item: item[0], result)))
+        counts = np.array(list(map(lambda item: item[1], result)))
+        print(file_types, counts, len(file_types), len(counts))
 
     def imghdr_file_histogram(self):
         result = self._database.imghdr_file_histogram(self._blockchain)
