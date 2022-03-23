@@ -62,6 +62,7 @@ class View:
         ax2.set_ylabel("counts")
         ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
 
+        plt.savefig("asci_histogram_" + self._blockchain.value, dpi=300)
         plt.show()
 
     def __init__(self, blockchain: Optional[BLOCKCHAIN], database: Database):
