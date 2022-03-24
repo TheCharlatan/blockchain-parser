@@ -89,6 +89,8 @@ class View:
         utf_count = 0
         jpeg_count = 0
         png_count = 0
+        gringotts_count = 0
+        dif_count = 0
         for file_type, count in zip(file_types, counts):
             if count == 1:
                 continue
@@ -100,6 +102,12 @@ class View:
                 continue
             if "PNG" in file_type:
                 png_count += 1
+                continue
+            if "Gringotts" in file_type:
+                gringotts_count += 1
+                continue
+            if "DIF" in file_type:
+                dif_count += 1
                 continue
             if "object file" in file_type or "b.out" in file_type or "RISC OS" in file_type or "MMDF" in file_type or "Lotus" in file_type or "FuseCompress" in file_type or "FIGlet" in file_type or "AppleDouble" in file_type or "AppleSingle" in file_type or "MED_Song" in file_type or "Android binary" in file_type or "GDSII" in file_type or "SunOS" in file_type or "AppledDouble" in file_type or "Core file" in file_type or "MAthematica" in file_type or "Berkeley DB" in file_type or "Microstation" in file_type or "overlay object file" in file_type or "LADS" in file_type or "Netscape" in file_type or "ESRI Shapefile" in file_type or "Cytovision" in file_type or "i960" in file_type or "ddis" in file_type or "SPEC" in file_type or "MMFD" in file_type or "AHX" in file_type or "libfprint" in file_type or "SeqBox" in file_type or "Psion" in file_type or "PCP compiled" in file_type or "separate object" in file_type or "Compiled XKB" in file_type or "dar archive" in file_type or "cisco" in file_type or "Symbian" in file_type or "Spectrum .TAP" in file_type or "StuffIt" in file_type or "Spectrum" in file_type or "Spectrum" in file_type or "RAD" in file_type or "Psion Series" in file_type or "Progressive Graphics" in file_type or "Palm" in file_type or "LFS" in file_type or "GEM" in file_type or "ESRI Shapefile" in file_type or "keymap" in file_type or "Aster*x" in file_type:
                 continue
@@ -114,6 +122,12 @@ class View:
         if png_count > 0:
             filtered_file_types.append("PNG image data")
             filtered_counts.append(png_count)
+        if gringotts_count > 0:
+            filtered_file_types.append("Gringotts data file")
+            filtered_counts.append(gringotts_count)
+        if dif_count > 0:
+            filtered_file_types.append("DIF (DVCPRO) movie file")
+            filtered_counts.append(dif_count)
         file_types = np.array(filtered_file_types)
         counts = np.array(filtered_counts)
 
