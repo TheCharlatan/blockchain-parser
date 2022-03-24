@@ -30,6 +30,13 @@ class View:
         result = self._database.ascii_histogram(self._blockchain)
         lengths = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
+
+        # truncate the histogram at 34 entries
+        if len(lengths > 34):
+            lengths = lengths[:34]
+        if len(counts > 34):
+            counts = counts[:34]
+
         x_pos = np.arange(len(lengths))
 
         lengths_histogram_no_gaps = []
