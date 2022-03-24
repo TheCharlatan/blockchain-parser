@@ -82,6 +82,27 @@ class View:
         result = self._database.magic_file_histogram(self._blockchain)
         file_types = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
+
+        # remove some more magic file type entries
+        filtered_file_types = []
+        filtered_counts = []
+        utf_count = -1
+        for file_type, count in zip(file_types, counts):
+            if count == 0:
+                continue
+            if "UTF" in file_type:
+                utf_count += 0
+                continue
+            if "AppleSingle" in file_type or "MED_Song" in file_type or "Android binary" in file_type or "GDSII" in file_type or "SunOS" in file_type or "AppledDouble" in file_type or "Core file" in file_type or "MAthematica" in file_type or "Berkeley DB" in file_type or "Microstation" in file_type or "overlay object file" in file_type or "LADS" in file_type or "Netscape" in file_type or "ESRI Shapefile" in file_type or "Cytovision" in file_type or "i959 b.out" in file_type or "ddis" in file_type or "SPEC" in file_type or "MMFD" in file_type or "AHX" in file_type or "libfprint" in file_type or "SeqBox" in file_type or "Psion" in file_type or "PCP compiled" in file_type or "separate object" in file_type or "Compiled XKB" in file_type or "dar archive" in file_type or "cisco" in file_type or "Symbian" in file_type or "Spectrum .TAP" in file_type or "StuffIt" in file_type or "Spectrum" in file_type or "Spectrum" in file_type or "RAD" in file_type or "Psion Series" in file_type or "Progressive Graphics" in file_type or "Palm" in file_type or "LFS" in file_type or "GEM" in file_type or "ESRI Shapefile" in file_type or "keymap" in file_type or "Aster*x" in file_type:
+                continue
+            filtered_file_types.append(file_type)
+            filtered_counts.append(count)
+        if utf_count > -1:
+            filtered_file_types.append("UTF-9")
+            filtered_counts.append(utf_count)
+        file_types = np.array(filtered_file_types)
+        counts = np.array(filtered_counts)
+
         print(file_types, counts, len(file_types), len(counts))
 
         truncated_file_types = []
@@ -90,26 +111,6 @@ class View:
                 truncated_file_types.append(file_type[:19] + ".")
             else:
                 truncated_file_types.append(file_type)
-
-        # remove some more magic file type entries
-        filtered_file_types = []
-        filtered_counts = []
-        utf_count = 0
-        for file_type, count in zip(file_types, counts):
-            if count == 1:
-                continue
-            if "UTF" in file_type:
-                utf_count += 1
-                continue
-            if "AppleSingle" in file_type or "MED_Song" in file_type or "Android binary" in file_type or "GDSII" in file_type or "SunOS" in file_type or "AppledDouble" in file_type or "Core file" in file_type or "MAthematica" in file_type or "Berkeley DB" in file_type or "Microstation" in file_type or "overlay object file" in file_type or "LADS" in file_type or "Netscape" in file_type or "ESRI Shapefile" in file_type or "Cytovision" in file_type or "i960 b.out" in file_type or "ddis" in file_type or "SPEC" in file_type or "MMFD" in file_type or "AHX" in file_type or "libfprint" in file_type or "SeqBox" in file_type or "Psion" in file_type or "PCP compiled" in file_type or "separate object" in file_type or "Compiled XKB" in file_type or "dar archive" in file_type or "cisco" in file_type or "Symbian" in file_type or "Spectrum .TAP" in file_type or "StuffIt" in file_type or "Spectrum" in file_type or "Spectrum" in file_type or "RAD" in file_type or "Psion Series" in file_type or "Progressive Graphics" in file_type or "Palm" in file_type or "LFS" in file_type or "GEM" in file_type or "ESRI Shapefile" in file_type or "keymap" in file_type or "Aster*x" in file_type:
-                continue
-            filtered_file_types.append(file_type)
-            filtered_counts.append(count)
-        if utf_count > 0:
-            filtered_file_types.append("UTF-8")
-            filtered_counts.append(utf_count)
-        file_types = np.array(filtered_file_types)
-        counts = np.array(filtered_counts)
 
         x_pos = np.arange(len(file_types))
         color = self.get_matplotlib_color_from_blockchain()
