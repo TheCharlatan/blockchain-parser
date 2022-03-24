@@ -31,14 +31,6 @@ class View:
         lengths = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
 
-        # truncate the histogram at 34 entries
-        if len(lengths > 34):
-            lengths = lengths[:34]
-        if len(counts > 34):
-            counts = counts[:34]
-
-        x_pos = np.arange(len(lengths))
-
         lengths_histogram_no_gaps = []
         counts_histogram_no_gaps = []
         for i in range(10, np.max(lengths)+1):
@@ -55,6 +47,14 @@ class View:
         minimum_string_lengths= np.arange(10, 10+34)
         x2_pos = np.arange(34)
         color = self.get_matplotlib_color_from_blockchain()
+
+        # truncate the histogram at 34 entries
+        if len(lengths > 34):
+            lengths = lengths[:34]
+        if len(counts > 34):
+            counts = counts[:34]
+
+        x_pos = np.arange(len(lengths))
 
         fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes]] = plt.subplots(2)
         fig, (ax1, ax2) = fig_axis_tuple
