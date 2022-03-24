@@ -56,19 +56,19 @@ class View:
         ax1.set_xlabel("string length")
         ax1.set_yscale("log")
         ax1.set_ylabel("counts")
-        ax1.set_title(self._blockchain.value + " Count of each detected string length")
-        plt.setp(ax1.get_xticklabels(), fontsize=7, rotation='horizontal')
+        # ax1.set_title(self._blockchain.value + " Count of each detected string length")
+        plt.setp(ax1.get_xticklabels(), fontsize=7, rotation='vertical')
 
         ax2.bar(x2_pos, accumulated_string_count, color=color)
         ax2.set_xticks(x2_pos, minimum_string_lengths)
         ax2.set_xlabel("minimum string length")
         ax2.set_yscale("log")
         ax2.set_ylabel("counts")
-        ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
-        plt.setp(ax2.get_xticklabels(), fontsize=7, rotation='horizontal')
+        # ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
+        plt.setp(ax2.get_xticklabels(), fontsize=7, rotation='vertical')
         plt.subplots_adjust(hspace=0.43)
 
-        plt.savefig("ascii_histogram_" + self._blockchain.value, dpi=1200)
+        plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
         plt.show()
 
     def magic_file_histogram(self):
@@ -93,10 +93,10 @@ class View:
         ax1.set_xticks(x_pos, truncated_file_types)
         ax1.set_yscale("log")
         ax1.set_ylabel("counts")
-        ax1.set_title(self._blockchain.value + " Count of magic detected file types")
+        # ax1.set_title(self._blockchain.value + " Count of magic detected file types")
         plt.setp(ax1.get_xticklabels(), fontsize=12, rotation='vertical')
         plt.subplots_adjust(bottom=0.41)
-        plt.savefig("magic_file_histogram_" + self._blockchain.value, dpi=1200)
+        plt.savefig("magic_file_histogram_" + self._blockchain.value + ".pdf", dpi=600)
         plt.show()
     
     def imghdr_file_histogram(self):
@@ -121,9 +121,9 @@ class View:
         ax1.set_xticks(x_pos, truncated_file_types)
         ax1.set_yscale("log")
         ax1.set_ylabel("counts")
-        ax1.set_title(self._blockchain.value + " Count of imghdr detected file types")
+        # ax1.set_title(self._blockchain.value + " Count of imghdr detected file types")
         plt.setp(ax1.get_xticklabels(), fontsize=12, rotation='vertical')
-        plt.savefig("imghdr_file_histogram_" + self._blockchain.value, dpi=1200)
+        plt.savefig("imghdr_file_histogram_" + self._blockchain.value + ".pdf", dpi=600)
         plt.show()
 
     def __init__(self, blockchain: Optional[BLOCKCHAIN], database: Database):
