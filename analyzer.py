@@ -170,7 +170,13 @@ def monero_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[
     return monero_find_file_within_extra(detector_payload, find_file_with_imghdr)
 
 def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
-    cscript = CScript(detector_payload.data)
+    data: bytes
+    if type(detector_payload.data) == str:
+        data = bytes.fromhex(detector_payload.data)
+    else:
+        data = detector_payload.data
+
+    cscript = CScript(data)
     # try finding a file in the full script
     res = file_detector_func(cscript)
     if res is not None:
