@@ -1,9 +1,9 @@
 from re import U
 import threading
-from typing import NamedTuple
+from typing import Iterable, List, NamedTuple
 from blockchain_parser.blockchain import Blockchain
 import zmq
-from database import BLOCKCHAIN, DATATYPE, Database
+from database import BLOCKCHAIN, DATATYPE, CryptoDataRecord, Database
 from parser import DataExtractor
 import bitcoin.rpc
 import os
@@ -14,7 +14,7 @@ from pathlib import Path
 class BitcoinDataMessage(NamedTuple):
     """ZMQ Message for the DatabaseWriter thread with contents to be written to the database"""
     data: bytes
-    txid: bytes
+    txid: str
     data_type: DATATYPE
     block_height: int
     extra_index: int
@@ -38,11 +38,11 @@ class DatabaseWriter(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self) -> None:
-        records = []
+        records: List[CryptoDataRecord] = []
         while True:
             message: BitcoinDataMessage = self._receiver.recv_pyobj()
 
-            records.append((
+            records.append(CryptoDataRecord(
                 message.data,
                 message.txid,
                 self._blockchain.value,
@@ -52,6 +52,7 @@ class DatabaseWriter(threading.Thread):
             ))
 
             if len(records) > 500:
+                print("writing:", records[0])
                 self._db.insert_records(records)
                 # print(self._coin.value + " written")
                 records = []
@@ -470,7 +471,7 @@ class BitcoinParser(DataExtractor):
                     database_event_sender.send_pyobj(BitcoinDataMessage(output.scriptPubKey, tx.txid, DATATYPE.SCRIPT_PUBKEY, block.height, output_index))
 
             if height % 500 == 0:
-                print("parsed until height:", height, tx_inputs, ignored_tx_inputs, tx_outputs, ignored_tx_outputs)
+                print("bitcoin parsed until height:", height, "n inputs:", tx_inputs, "n ignored inputs:", ignored_tx_inputs, "n outputs:", tx_outputs, "n ignored outputs:", ignored_tx_outputs)
 
 
         print("Completed blockchain parsing, commencing UTXO parsing")
@@ -480,4 +481,7 @@ class BitcoinParser(DataExtractor):
             utxo_counter += 1
             if (utxo_counter % 1000 == 0):
                 print(utxo_counter)
+            print("out data:", utxo["out"]["data"], "txid:", utxo["tx_id"])
             database_event_sender.send_pyobj(BitcoinDataMessage(utxo["out"]["data"], utxo["tx_id"], DATATYPE.SCRIPT_PUBKEY, utxo["height"], utxo["index"]))
+
+        print("Completed UTXO parsing")

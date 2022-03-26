@@ -170,7 +170,7 @@ class Database:
 
     def insert_records(
         self,
-        records: Iterable[Iterable],
+        records: Iterable[CryptoDataRecord],
     ) -> None:
         conn = sqlite3.connect(self.name)
         try:
@@ -345,7 +345,7 @@ class Database:
             detected_count += 1
             if len(results) > 100:
                 database_write_func(results, conn)
-                print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
+                print("counter: ", counter, "number detected: ", detected_count, "total raw data rows: ", res)
                 conn.commit()
                 results = []
 

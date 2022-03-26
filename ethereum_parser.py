@@ -84,7 +84,7 @@ class DatabaseWriter(threading.Thread):
             ))
 
             if len(records) > 500:
-                print("writing to DB...", records[0])
+                print("ethereum writing to DB...", records[0])
                 self._db.insert_records(records)
                 records = []
 

@@ -26,6 +26,68 @@ class View:
                 return "orange"
         return "mediumblue"
 
+    def ascii_histogram_complete(self):
+        result = self._database.ascii_histogram(self._blockchain)
+        lengths = np.array(list(map(lambda item: item[0], result)))
+        counts = np.array(list(map(lambda item: item[1], result)))
+
+        lengths_histogram_no_gaps = []
+        counts_histogram_no_gaps = []
+        for i in range(10, np.max(lengths)+1):
+            lengths_histogram_no_gaps.append(i)
+            if i in lengths:
+                counts_histogram_no_gaps.append(int(counts[np.where(lengths == i)]))
+            else:
+                counts_histogram_no_gaps.append(0)
+
+        accumulated_string_count = []
+        for i in range(34):
+            accumulated_string_count.append(np.sum(counts_histogram_no_gaps[i:]))
+        accumulated_string_count = np.array(accumulated_string_count)
+        minimum_string_lengths= np.arange(10, 10+34)
+        x2_pos = np.arange(34)
+        color = self.get_matplotlib_color_from_blockchain()
+
+        print(accumulated_string_count, minimum_string_lengths)
+        x_pos = np.arange(len(lengths))
+
+        compact_length_labels = [" " for _ in range(len(lengths))]
+        for i in range(len(lengths)):
+            if i == 0:
+                compact_length_labels[0] = str(lengths[0])
+            # add 10 more labels interspersed in the histogram
+            if (i % (int(len(lengths) / 15))) == 0:
+                compact_length_labels[i] = lengths[i]
+        compact_length_labels[-1] = str(lengths[-1])
+        compact_length_labels = np.array(compact_length_labels)
+
+        # print(x_pos, lengths, compact_length_labels, len(x_pos), len(lengths), len(compact_length_labels))
+
+        fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes]] = plt.subplots(2)
+        fig, (ax1, ax2) = fig_axis_tuple
+        ax1.bar(x_pos, counts, color=color)
+        ax1.set_xticks(x_pos, compact_length_labels)
+        ax1.set_xlabel("string length")
+        ax1.set_yscale("log")
+        ax1.set_ylabel("counts")
+        # ax1.set_title(self._blockchain.value + " Count of each detected string length")
+        plt.setp(ax1.get_xticklabels(), fontsize=7, rotation='vertical')
+
+        print(x2_pos, accumulated_string_count, minimum_string_lengths, len(x2_pos), len(accumulated_string_count), len(minimum_string_lengths))
+
+        ax2.bar(x2_pos, accumulated_string_count, color=color)
+        ax2.set_xticks(x2_pos, minimum_string_lengths)
+        ax2.set_xlabel("minimum string length")
+        ax2.set_yscale("log")
+        ax2.set_ylabel("counts")
+        # ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
+        plt.setp(ax2.get_xticklabels(), fontsize=7, rotation='vertical')
+        plt.subplots_adjust(hspace=0.43)
+
+        plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
+        plt.show()
+
+
     def ascii_histogram(self):
         result = self._database.ascii_histogram(self._blockchain)
         lengths = np.array(list(map(lambda item: item[0], result)))
@@ -211,7 +273,7 @@ class View:
 
     def view(self, mode: ViewMode) -> None:
         if mode == ViewMode.ASCII_HISTOGRAM:
-            self.ascii_histogram()
+            self.ascii_histogram_complete()
         elif mode == ViewMode.IMGHDR_FILE_HISTOGRAM:
             self.imghdr_file_histogram()
         elif mode == ViewMode.MAGIC_FILE_HISTOGRAM:

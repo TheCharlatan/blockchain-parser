@@ -49,7 +49,6 @@ class TxParser(threading.Thread):
     def run(self) -> None:
         loop = asyncio.new_event_loop()
         while True:
-            print("parsing monero transactions...")
             message: MoneroParserMessage = self._receiver.recv_pyobj()
             monero_txs = loop.run_until_complete(
                 deserialize_transactions(map(async_results, message.monero_txs_raw))
@@ -60,8 +59,6 @@ class TxParser(threading.Thread):
                 "{}B".format(len(monero_tx.extra)), *monero_tx.extra
             ) for monero_tx in monero_txs]
 
-            print("parsed monero transactions")
-                
             self._sender.send_pyobj(MoneroDataMessage(message.counter, extra_bytes_list, message.monero_tx_indices))
 
 
@@ -87,7 +84,6 @@ class DatabaseWriter(threading.Thread):
 
         while True:
             message: MoneroDataMessage = self._receiver.recv_pyobj()
-            print("writing " + self._blockchain.value)
             records = []
 
             for i in range(len(message.extra_bytes_list)):
@@ -107,7 +103,7 @@ class DatabaseWriter(threading.Thread):
             
             self._db.insert_records(records)
 
-            print("written ", self._blockchain, message.counter, default_extra_counter)
+            print("monero written blockchain:", self._blockchain, "counts:", message.counter, "default extra counts:", default_extra_counter)
 
 
 async def deserialize_tx_index(tx_index_raw: bytes) -> xmr.TxIndex:
