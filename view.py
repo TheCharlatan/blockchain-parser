@@ -31,8 +31,8 @@ class View:
         lengths = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
 
-        # if len(counts) < 35:
-            # return self.ascii_histogram()
+        if len(counts) < 35:
+            return self.ascii_histogram()
 
         lengths_histogram_no_gaps = []
         counts_histogram_no_gaps = []
