@@ -58,8 +58,8 @@ class View:
         for i in range(len(lengths)):
             if i == 0:
                 compact_length_labels[0] = str(lengths[0])
-            # add 10 more labels interspersed in the histogram
-            if (i % (int(len(lengths) / 15))) == 0:
+            # add 10 more labels interspersed in the histogram, if the last label is too close omit it
+            if (i % (int(len(lengths) / 15))) == 0 and i < (len(lengths) - len(lengths) / 30):
                 compact_length_labels[i] = lengths[i]
         compact_length_labels[-1] = str(lengths[-1])
         compact_length_labels = np.array(compact_length_labels)
