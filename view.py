@@ -66,7 +66,7 @@ class View:
 
         print(x_pos, lengths, compact_length_labels, len(x_pos), len(lengths), len(compact_length_labels))
 
-        fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes, Axes]] = plt.subplots(3)
+        fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes, Axes]] = plt.subplots(3, figsize=(12,10))
         fig, (ax1, ax2, ax3) = fig_axis_tuple
         ax1.bar(x_pos, counts, color=color)
         ax1.set_xticks(x_pos, compact_length_labels)
@@ -102,7 +102,7 @@ class View:
         ax3.set_ylabel("counts")
         # ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
         plt.setp(ax3.get_xticklabels(), fontsize=7, rotation='vertical')
-        plt.subplots_adjust(hspace=0.43)
+        plt.subplots_adjust(hspace=0.35)
 
         plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
         plt.show()
