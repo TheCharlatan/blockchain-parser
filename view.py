@@ -31,6 +31,9 @@ class View:
         lengths = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
 
+        # if len(counts) < 35:
+            # return self.ascii_histogram()
+
         lengths_histogram_no_gaps = []
         counts_histogram_no_gaps = []
         for i in range(10, np.max(lengths)+1):
@@ -45,7 +48,7 @@ class View:
             accumulated_string_count.append(np.sum(counts_histogram_no_gaps[i:]))
         accumulated_string_count = np.array(accumulated_string_count)
         minimum_string_lengths= np.arange(10, 10+34)
-        x2_pos = np.arange(34)
+        x3_pos = np.arange(34)
         color = self.get_matplotlib_color_from_blockchain()
 
         print(accumulated_string_count, minimum_string_lengths)
@@ -61,10 +64,10 @@ class View:
         compact_length_labels[-1] = str(lengths[-1])
         compact_length_labels = np.array(compact_length_labels)
 
-        # print(x_pos, lengths, compact_length_labels, len(x_pos), len(lengths), len(compact_length_labels))
+        print(x_pos, lengths, compact_length_labels, len(x_pos), len(lengths), len(compact_length_labels))
 
-        fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes]] = plt.subplots(2)
-        fig, (ax1, ax2) = fig_axis_tuple
+        fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes, Axes]] = plt.subplots(3)
+        fig, (ax1, ax2, ax3) = fig_axis_tuple
         ax1.bar(x_pos, counts, color=color)
         ax1.set_xticks(x_pos, compact_length_labels)
         ax1.set_xlabel("string length")
@@ -73,15 +76,32 @@ class View:
         # ax1.set_title(self._blockchain.value + " Count of each detected string length")
         plt.setp(ax1.get_xticklabels(), fontsize=7, rotation='vertical')
 
-        print(x2_pos, accumulated_string_count, minimum_string_lengths, len(x2_pos), len(accumulated_string_count), len(minimum_string_lengths))
+        # truncate the histogram at 34 entries
+        if len(lengths) > 34:
+            lengths = lengths[:34]
+        if len(counts) > 34:
+            counts = counts[:34]
 
-        ax2.bar(x2_pos, accumulated_string_count, color=color)
-        ax2.set_xticks(x2_pos, minimum_string_lengths)
-        ax2.set_xlabel("minimum string length")
+        x_pos = np.arange(len(lengths))
+
+        ax2.bar(x_pos, counts, color=color)
+        ax2.set_xticks(x_pos, lengths)
+        ax2.set_xlabel("string length")
         ax2.set_yscale("log")
         ax2.set_ylabel("counts")
-        # ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
+        # ax2.set_title(self._blockchain.value + " Truncated count of each detected string length")
         plt.setp(ax2.get_xticklabels(), fontsize=7, rotation='vertical')
+
+
+        print(x3_pos, accumulated_string_count, minimum_string_lengths, len(x3_pos), len(accumulated_string_count), len(minimum_string_lengths))
+
+        ax3.bar(x3_pos, accumulated_string_count, color=color)
+        ax3.set_xticks(x3_pos, minimum_string_lengths)
+        ax3.set_xlabel("minimum string length")
+        ax3.set_yscale("log")
+        ax3.set_ylabel("counts")
+        # ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
+        plt.setp(ax3.get_xticklabels(), fontsize=7, rotation='vertical')
         plt.subplots_adjust(hspace=0.43)
 
         plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
@@ -113,9 +133,9 @@ class View:
         print(accumulated_string_count, minimum_string_lengths)
 
         # truncate the histogram at 34 entries
-        if len(lengths > 34):
+        if len(lengths) > 34:
             lengths = lengths[:34]
-        if len(counts > 34):
+        if len(counts) > 34:
             counts = counts[:34]
 
         x_pos = np.arange(len(lengths))
