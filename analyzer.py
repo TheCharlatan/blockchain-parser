@@ -16,6 +16,8 @@ import zmq
 from database import BLOCKCHAIN, Database, DatabaseWriteFunc, DetectedAsciiPayload, DetectedFilePayload, DetectorFunc, DetectorPayload
 
 
+magic_handle = magic.Magic()
+
 def gnu_strings(payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsciiPayload]:
     """Find and return a string with the specified minimum size using gnu strings
     :param bytestring: Bytes to be examined.
@@ -95,10 +97,10 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
     """Find files with the help of magic numbers library"""
     if len(data) < 8:
         return None
-    res = magic.from_buffer(data)
+    res = magic_handle.from_buffer(data)
     # try again with a potential padding byte removed
     if res == "data":
-        res = magic.from_buffer(data[1:])
+        res = magic_handle.from_buffer(data[1:])
     if res == "data" or res == "shared library" or res == "(non-conforming)" or "title:" in res or "ddis/ddif" in res or "Message Sequence" in res or "rawbits" in res or "Binary II" in res or "ZPAQ stream" in res or "QL disk" in res or "LN03 output" in res or "LADS" in res or "XWD X" in res or "Smile" in res or "Nintendo" in res or "Kerberos" in res or "AMF" in res or "ctors/track" in res or "ICE authority" in res or "SAS" in res or "Stereo" in res or "ddis/dtif" in res or "Virtual TI skin" in res or "Multitracker" in res or "HP s200" in res or "ECMA-363" in res or "Monaural" in res or "32 kHz" in res or "48 kHz" in res or "locale archive" in res or "terminfo" in res or "GRand" in res or "font" in res or "Apache" in res or "OEM-ID" in res or "Bentley" in res or "huf output" in res or "disk quotas" in res or "PRCS" in res or "PEX" in res or "C64" in res or "lif file" in res or "GHost image" in res or "Linux" in res or "amd" in res or "XENIX" in res or "structured file" in res or "gfxboot" in res or "X11" in res or "cpio" in res or "Squeezed" in res or "compacted" in res or "Quasijarus" in res or "JVT" in res or "Poskanzer" in res or "VISX" in res or "TIM" in res or "PCX" in res or "MSVC" in res or "LZH" in res or "LVM1" in res or "Encore" in res or "ATSC" in res or "BASIC" in res or "frozen file" in res or "dBase" in res or "SCO" in res or "RDI" in res or "PostScript" in res or "Netpbm" in res or "Maple" in res or "i386" in res or "archive data" in res or "Motorola" in res or "FoxPro" in res or "packed data" in res or "fsav" in res or "crunched" in res or "compress'd" in res or "Terse" in res or "SoftQuad" in res or "Sendmail" in res or "OS9" in res or "MySQL" in res or "IRIS" in res or "Java" in res or "SOFF" in res or "PSI " in res or "Clarion" in res or "BIOS" in res or "Atari" in res or "Ai32" in res or "ALAN" in res or "44.1" in res or "Microsoft" in res or "TeX" in res or "floppy" in res or "GLF_BINARY" in res or "AIN" in res or "Alpha" in res or "vfont" in res or "DOS" in res or "Sun disk" in res or "Group 3" in res or "Logitech" in res or "Solitaire" in res or "old " in res or "SYMMETRY" in res or "DOS/MBR" in res or "Amiga" in res or "mumps" in res or "ID tags" in res or "GLS" in res or "dBase IV DBT" in res or "TTComp" in res or "EBCDIC" in res or "MGR bitmap" in res or "CLIPPER" in res or "Dyalog" in res or "PARIX" in res or "AIX" in res or "SysEx" in res or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
         return None
     if "mcrypt" in res:
@@ -119,7 +121,6 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
         return "Bio-Rad .PIC Image File"
     if "Targa" in res:
         return "Targa image data"
-    magic.magic_close()
     return res
 
 def get_monero_offset_regex() -> re.Pattern:
