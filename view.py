@@ -179,31 +179,31 @@ class View:
         openssl_encrypted_count = 0
         os_2_count = 0
         for file_type, count in zip(file_types, counts):
-            if count == 1:
-                continue
+            # if count == 1:
+                # continue
             if "UTF" in file_type:
-                utf_count += 1
+                utf_count += count
                 continue
             if "JPEG" in file_type:
-                jpeg_count += 1
+                jpeg_count += count
                 continue
             if "PNG" in file_type:
-                png_count += 1
+                png_count += count
                 continue
             if "Gringotts" in file_type:
-                gringotts_count += 1
+                gringotts_count += count
                 continue
             if "DIF" in file_type:
-                dif_count += 1
+                dif_count += count
                 continue
             if "tar archive" in file_type:
-                tar_archive_count += 1
+                tar_archive_count += count
                 continue
             if "openssl" in file_type:
-                openssl_encrypted_count += 1
+                openssl_encrypted_count += count
                 continue
             if "OS/2" in file_type:
-                os_2_count += 1
+                os_2_count += count
                 continue
             if "Windows metafile" in file_type or "Macintosh MFS data" in file_type or "HP PCL" in file_type or "core file (Xenix)" in file_type or "compiled Lisp" in file_type or "Zebra Metafile" in file_type or "StarOffice Gallery" in file_type or "Minix filesystem" in file_type or "Macintosh HFS" in file_type or "MacBinary" in file_type or "Embedded OpenType" in file_type or "DIY-Thermocam" in file_type or "Apple HFS" in file_type or "object file" in file_type or "b.out" in file_type or "RISC OS" in file_type or "MMDF" in file_type or "Lotus" in file_type or "FuseCompress" in file_type or "FIGlet" in file_type or "AppleDouble" in file_type or "AppleSingle" in file_type or "MED_Song" in file_type or "Android binary" in file_type or "GDSII" in file_type or "SunOS" in file_type or "AppledDouble" in file_type or "Core file" in file_type or "MAthematica" in file_type or "Berkeley DB" in file_type or "Microstation" in file_type or "overlay object file" in file_type or "LADS" in file_type or "Netscape" in file_type or "ESRI Shapefile" in file_type or "Cytovision" in file_type or "i960" in file_type or "ddis" in file_type or "SPEC" in file_type or "MMFD" in file_type or "AHX" in file_type or "libfprint" in file_type or "SeqBox" in file_type or "Psion" in file_type or "PCP compiled" in file_type or "separate object" in file_type or "Compiled XKB" in file_type or "dar archive" in file_type or "cisco" in file_type or "Symbian" in file_type or "Spectrum .TAP" in file_type or "StuffIt" in file_type or "Spectrum" in file_type or "Spectrum" in file_type or "RAD" in file_type or "Psion Series" in file_type or "Progressive Graphics" in file_type or "Palm" in file_type or "LFS" in file_type or "GEM" in file_type or "ESRI Shapefile" in file_type or "keymap" in file_type or "Aster*x" in file_type:
                 continue
