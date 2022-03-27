@@ -119,6 +119,7 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
         return "Bio-Rad .PIC Image File"
     if "Targa" in res:
         return "Targa image data"
+    magic.magic_close()
     return res
 
 def get_monero_offset_regex() -> re.Pattern:
