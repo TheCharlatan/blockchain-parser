@@ -84,6 +84,7 @@ class FileTypeHistogram(NamedTuple):
     file_type: str
     file_type_count: int
 
+
 class RecordStatistics(NamedTuple):
     distinct_data_rows: int
     max_block_height: int
@@ -95,6 +96,7 @@ class RecordStatistics(NamedTuple):
 DetectorFunc = Callable[[DetectorPayload], Optional[NamedTuple]]
 
 DatabaseWriteFunc = Callable[[Sequence[Any], sqlite3.Connection], None]
+
 
 class Database:
     def __init__(self, name: str) -> None:
@@ -118,7 +120,7 @@ class Database:
             );"""
             )
             print("Crypto Data Table successfully created")
-  
+
         c.execute(
             """ SELECT count(name) FROM sqlite_master WHERE type='table' AND name='asciiData' """
         )
@@ -164,19 +166,15 @@ class Database:
             )
             print("imghdrFileData Table successfully created")
 
-
         conn.commit()
         conn.close()
 
-    def insert_records(
-        self,
-        records: Iterable[CryptoDataRecord],
-    ) -> None:
+    def insert_records(self, records: Iterable[CryptoDataRecord],) -> None:
         conn = sqlite3.connect(self.name)
         try:
             conn.executemany(
                 "INSERT INTO cryptoData(DATA,TXID,COIN,DATA_TYPE,BLOCK_HEIGHT,EXTRA_INDEX) values(?,?,?,?,?,?)",
-                records
+                records,
             )
         except sqlite3.IntegrityError:
             return
@@ -225,36 +223,49 @@ class Database:
     def get_data(self, data_type: DATATYPE) -> List[bytes]:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
-        c.execute("SELECT data FROM cryptoData WHERE data_type=?",
-                  (data_type.value,))
+        c.execute("SELECT data FROM cryptoData WHERE data_type=?", (data_type.value,))
         results = c.fetchall()
         return results
 
     def ascii_histogram(self, blockchain: Optional[BLOCKCHAIN]) -> List[ASCIIHistogram]:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
-        c.execute("SELECT STRING_LENGTH, COUNT(STRING_LENGTH) FROM asciiData GROUP BY STRING_LENGTH ORDER BY STRING_LENGTH")
+        c.execute(
+            "SELECT STRING_LENGTH, COUNT(STRING_LENGTH) FROM asciiData GROUP BY STRING_LENGTH ORDER BY STRING_LENGTH"
+        )
         results = c.fetchall()
         return results
 
-    def magic_file_histogram(self, blockchain: Optional[BLOCKCHAIN]) -> List[FileTypeHistogram]:
+    def magic_file_histogram(
+        self, blockchain: Optional[BLOCKCHAIN]
+    ) -> List[FileTypeHistogram]:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
-        c.execute("SELECT FILE_TYPE, COUNT(FILE_TYPE) FROM magicFileData GROUP BY FILE_TYPE ORDER BY FILE_TYPE")
+        c.execute(
+            "SELECT FILE_TYPE, COUNT(FILE_TYPE) FROM magicFileData GROUP BY FILE_TYPE ORDER BY FILE_TYPE"
+        )
         results = c.fetchall()
         return results
 
-    def imghdr_file_histogram(self, blockchain: Optional[BLOCKCHAIN]) -> List[FileTypeHistogram]:
+    def imghdr_file_histogram(
+        self, blockchain: Optional[BLOCKCHAIN]
+    ) -> List[FileTypeHistogram]:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
-        c.execute("SELECT FILE_TYPE, COUNT(FILE_TYPE) FROM imghdrFileData GROUP BY FILE_TYPE ORDER BY FILE_TYPE")
+        c.execute(
+            "SELECT FILE_TYPE, COUNT(FILE_TYPE) FROM imghdrFileData GROUP BY FILE_TYPE ORDER BY FILE_TYPE"
+        )
         results = c.fetchall()
         return results
 
-    def get_record_statistics(self, blockchain: Optional[BLOCKCHAIN]) -> RecordStatistics:
+    def get_record_statistics(
+        self, blockchain: Optional[BLOCKCHAIN]
+    ) -> RecordStatistics:
         conn = sqlite3.connect(self.name)
         c = conn.cursor()
-        c.execute("SELECT COUNT(*), MAX(BLOCK_HEIGHT), MAX(LENGTH(DATA)) FROM cryptoData")
+        c.execute(
+            "SELECT COUNT(*), MAX(BLOCK_HEIGHT), MAX(LENGTH(DATA)) FROM cryptoData"
+        )
         total_rows, max_block_height, max_length = c.fetchall()[0]
         print("Maximum data record size:", max_length)
         c.execute("SELECT COUNT(*) FROM asciiData")
@@ -263,18 +274,22 @@ class Database:
         total_magic_files = c.fetchall()[0][0]
         c.execute("SELECT COUNT(*) FROM imghdrFileData")
         total_imghdr_files = c.fetchall()[0][0]
-        return RecordStatistics(total_rows, max_block_height, total_strings, total_magic_files, total_imghdr_files)
+        return RecordStatistics(
+            total_rows,
+            max_block_height,
+            total_strings,
+            total_magic_files,
+            total_imghdr_files,
+        )
 
     def insert_detected_ascii_records(
-        self,
-        records: Sequence[DetectedAsciiPayload],
-        conn: sqlite3.Connection
+        self, records: Sequence[DetectedAsciiPayload], conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
         try:
             c.executemany(
                 "INSERT INTO asciiData(TXID,DATA_TYPE,EXTRA_INDEX,STRING_LENGTH) values (?,?,?,?)",
-                records
+                records,
             )
 
         except sqlite3.IntegrityError:
@@ -286,15 +301,13 @@ class Database:
         c.close()
 
     def insert_detected_magic_file_records(
-        self,
-        records: Sequence[DetectedAsciiPayload],
-        conn: sqlite3.Connection
+        self, records: Sequence[DetectedAsciiPayload], conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
         try:
             c.executemany(
                 "INSERT INTO magicFileData(TXID,DATA_TYPE,EXTRA_INDEX,FILE_TYPE) values (?,?,?,?)",
-                records
+                records,
             )
         except sqlite3.InterfaceError:
             print("integrity error")
@@ -305,15 +318,13 @@ class Database:
         c.close()
 
     def insert_detected_imghdr_file_records(
-        self,
-        records: Sequence[DetectedAsciiPayload],
-        conn: sqlite3.Connection
+        self, records: Sequence[DetectedAsciiPayload], conn: sqlite3.Connection
     ) -> None:
         c = conn.cursor()
         try:
             c.executemany(
                 "INSERT INTO imghdrFileData(TXID,DATA_TYPE,EXTRA_INDEX,FILE_TYPE) values (?,?,?,?)",
-                records
+                records,
             )
         except sqlite3.InterfaceError:
             print("integrity error")
@@ -323,8 +334,12 @@ class Database:
             raise
         c.close()
 
-
-    def run_detection(self, detector: DetectorFunc, database_write_func: DatabaseWriteFunc, blockchain: Optional[BLOCKCHAIN]) -> None:
+    def run_detection(
+        self,
+        detector: DetectorFunc,
+        database_write_func: DatabaseWriteFunc,
+        blockchain: Optional[BLOCKCHAIN],
+    ) -> None:
         conn = sqlite3.connect(self.name)
         counter = 0
         detected_count = 0
@@ -335,7 +350,9 @@ class Database:
         if blockchain is not None:
             prepared_query += "WHERE COIN=blockchain.value"
         results = []
-        for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute("SELECT * FROM cryptoData"):
+        for (data, txid, _, data_type, _, extra_index) in conn.cursor().execute(
+            "SELECT * FROM cryptoData"
+        ):
             counter += 1
             detected = detector(DetectorPayload(txid, data_type, extra_index, data))
             if detected is None:
@@ -345,7 +362,16 @@ class Database:
             detected_count += 1
             if len(results) > 100:
                 database_write_func(results, conn)
-                print("counter: ", counter, "number detected: ", detected_count, "total raw data rows: ", res, "last written:", results[0])
+                print(
+                    "counter: ",
+                    counter,
+                    "number detected: ",
+                    detected_count,
+                    "total raw data rows: ",
+                    res,
+                    "last written:",
+                    results[0],
+                )
                 conn.commit()
                 results = []
 
@@ -353,4 +379,11 @@ class Database:
         database_write_func(results, conn)
         conn.commit()
         print("\n\n\nCompleted detection!\n\n\n")
-        print("counter: ", counter, "number detected: ", detected_count, "total rows: ", res)
+        print(
+            "counter: ",
+            counter,
+            "number detected: ",
+            detected_count,
+            "total rows: ",
+            res,
+        )

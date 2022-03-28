@@ -13,7 +13,9 @@ class ParseEthereumBlockHeaders:
 
     def get_header(self, number: int) -> Header:
         try:
-            header: Union[Header, None] = self.eth_freezer_table.get_header_by_height(number)
+            header: Union[Header, None] = self.eth_freezer_table.get_header_by_height(
+                number
+            )
         except:
             header = self.eth_leveldb.get_header_by_height(number)
         if header is None:

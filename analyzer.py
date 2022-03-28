@@ -13,12 +13,23 @@ import re
 
 import zmq
 
-from database import BLOCKCHAIN, Database, DatabaseWriteFunc, DetectedAsciiPayload, DetectedFilePayload, DetectorFunc, DetectorPayload
+from database import (
+    BLOCKCHAIN,
+    Database,
+    DatabaseWriteFunc,
+    DetectedAsciiPayload,
+    DetectedFilePayload,
+    DetectorFunc,
+    DetectorPayload,
+)
 
 
 magic_handle = magic.Magic()
 
-def gnu_strings(payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsciiPayload]:
+
+def gnu_strings(
+    payload: DetectorPayload, min: int = 10
+) -> Optional[DetectedAsciiPayload]:
     """Find and return a string with the specified minimum size using gnu strings
     :param bytestring: Bytes to be examined.
     :type bytestring: bytes
@@ -28,7 +39,13 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsc
     :rtype: str
     """
     cmd = "strings -n {}".format(min)
-    process = subprocess.Popen( cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE)
+    process = subprocess.Popen(
+        cmd,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        stdin=subprocess.PIPE,
+    )
     assert process.stdin is not None
     process.stdin.write(payload.data)
     output = process.communicate()[0]
@@ -36,7 +53,9 @@ def gnu_strings(payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsc
     length = len(output_str)
     if length < min:
         return None
-    return DetectedAsciiPayload(payload.txid, payload.data_type, payload.extra_index, length)
+    return DetectedAsciiPayload(
+        payload.txid, payload.data_type, payload.extra_index, length
+    )
 
 
 def bitcoin_detect_op_return_output(cscript: CScript) -> str:
@@ -54,7 +73,9 @@ def bitcoin_detect_op_return_output(cscript: CScript) -> str:
     return ""
 
 
-def native_strings(detector_payload: DetectorPayload, min: int = 10) -> Optional[DetectedAsciiPayload]:
+def native_strings(
+    detector_payload: DetectorPayload, min: int = 10
+) -> Optional[DetectedAsciiPayload]:
     """Find and return a string with the specified minimum size using a python native implementation
     :param detector_payload: Contains data to be examined.
     :type detector_payload: DetectorPayload
@@ -70,12 +91,22 @@ def native_strings(detector_payload: DetectorPayload, min: int = 10) -> Optional
             result += chr(c)
             continue
         if len(result) >= min:
-            return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
+            return DetectedAsciiPayload(
+                detector_payload.txid,
+                detector_payload.data_type,
+                detector_payload.extra_index,
+                len(result),
+            )
 
         result = ""
     if len(result) < min:  # catch result at EOF
         return None
-    return DetectedAsciiPayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, len(result))
+    return DetectedAsciiPayload(
+        detector_payload.txid,
+        detector_payload.data_type,
+        detector_payload.extra_index,
+        len(result),
+    )
 
 
 def find_file_with_imghdr(data: bytes) -> Optional[str]:
@@ -93,6 +124,7 @@ def find_file_with_imghdr(data: bytes) -> Optional[str]:
     res = imghdr.what("", data[1:])
     return res
 
+
 def find_file_with_magic(data: bytes) -> Optional[str]:
     """Find files with the help of magic numbers library"""
     if len(data) < 8:
@@ -101,7 +133,149 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
     # try again with a potential padding byte removed
     if res == "data":
         res = magic_handle.from_buffer(data[1:])
-    if res == "data" or res == "shared library" or res == "(non-conforming)" or "title:" in res or "ddis/ddif" in res or "Message Sequence" in res or "rawbits" in res or "Binary II" in res or "ZPAQ stream" in res or "QL disk" in res or "LN03 output" in res or "LADS" in res or "XWD X" in res or "Smile" in res or "Nintendo" in res or "Kerberos" in res or "AMF" in res or "ctors/track" in res or "ICE authority" in res or "SAS" in res or "Stereo" in res or "ddis/dtif" in res or "Virtual TI skin" in res or "Multitracker" in res or "HP s200" in res or "ECMA-363" in res or "Monaural" in res or "32 kHz" in res or "48 kHz" in res or "locale archive" in res or "terminfo" in res or "GRand" in res or "font" in res or "Apache" in res or "OEM-ID" in res or "Bentley" in res or "huf output" in res or "disk quotas" in res or "PRCS" in res or "PEX" in res or "C64" in res or "lif file" in res or "GHost image" in res or "Linux" in res or "amd" in res or "XENIX" in res or "structured file" in res or "gfxboot" in res or "X11" in res or "cpio" in res or "Squeezed" in res or "compacted" in res or "Quasijarus" in res or "JVT" in res or "Poskanzer" in res or "VISX" in res or "TIM" in res or "PCX" in res or "MSVC" in res or "LZH" in res or "LVM1" in res or "Encore" in res or "ATSC" in res or "BASIC" in res or "frozen file" in res or "dBase" in res or "SCO" in res or "RDI" in res or "PostScript" in res or "Netpbm" in res or "Maple" in res or "i386" in res or "archive data" in res or "Motorola" in res or "FoxPro" in res or "packed data" in res or "fsav" in res or "crunched" in res or "compress'd" in res or "Terse" in res or "SoftQuad" in res or "Sendmail" in res or "OS9" in res or "MySQL" in res or "IRIS" in res or "Java" in res or "SOFF" in res or "PSI " in res or "Clarion" in res or "BIOS" in res or "Atari" in res or "Ai32" in res or "ALAN" in res or "44.1" in res or "Microsoft" in res or "TeX" in res or "floppy" in res or "GLF_BINARY" in res or "AIN" in res or "Alpha" in res or "vfont" in res or "DOS" in res or "Sun disk" in res or "Group 3" in res or "Logitech" in res or "Solitaire" in res or "old " in res or "SYMMETRY" in res or "DOS/MBR" in res or "Amiga" in res or "mumps" in res or "ID tags" in res or "GLS" in res or "dBase IV DBT" in res or "TTComp" in res or "EBCDIC" in res or "MGR bitmap" in res or "CLIPPER" in res or "Dyalog" in res or "PARIX" in res or "AIX" in res or "SysEx" in res or "ARJ" in res or "Applesoft" in res or "GeoSwath" in res or "ISO-8859" in res or "YAC" in res or "capture file" in res or "COFF" in res or "locale data table" in res or "Ucode" in res or "PDP" in res or "LXT" in res or "Tower" in res or "SGI" in res or "BS" in res or "exe" in res or "curses" in res or "endian" in res or "byte" in res or "ASCII" in res:
+    if (
+        res == "data"
+        or res == "shared library"
+        or res == "(non-conforming)"
+        or "title:" in res
+        or "ddis/ddif" in res
+        or "Message Sequence" in res
+        or "rawbits" in res
+        or "Binary II" in res
+        or "ZPAQ stream" in res
+        or "QL disk" in res
+        or "LN03 output" in res
+        or "LADS" in res
+        or "XWD X" in res
+        or "Smile" in res
+        or "Nintendo" in res
+        or "Kerberos" in res
+        or "AMF" in res
+        or "ctors/track" in res
+        or "ICE authority" in res
+        or "SAS" in res
+        or "Stereo" in res
+        or "ddis/dtif" in res
+        or "Virtual TI skin" in res
+        or "Multitracker" in res
+        or "HP s200" in res
+        or "ECMA-363" in res
+        or "Monaural" in res
+        or "32 kHz" in res
+        or "48 kHz" in res
+        or "locale archive" in res
+        or "terminfo" in res
+        or "GRand" in res
+        or "font" in res
+        or "Apache" in res
+        or "OEM-ID" in res
+        or "Bentley" in res
+        or "huf output" in res
+        or "disk quotas" in res
+        or "PRCS" in res
+        or "PEX" in res
+        or "C64" in res
+        or "lif file" in res
+        or "GHost image" in res
+        or "Linux" in res
+        or "amd" in res
+        or "XENIX" in res
+        or "structured file" in res
+        or "gfxboot" in res
+        or "X11" in res
+        or "cpio" in res
+        or "Squeezed" in res
+        or "compacted" in res
+        or "Quasijarus" in res
+        or "JVT" in res
+        or "Poskanzer" in res
+        or "VISX" in res
+        or "TIM" in res
+        or "PCX" in res
+        or "MSVC" in res
+        or "LZH" in res
+        or "LVM1" in res
+        or "Encore" in res
+        or "ATSC" in res
+        or "BASIC" in res
+        or "frozen file" in res
+        or "dBase" in res
+        or "SCO" in res
+        or "RDI" in res
+        or "PostScript" in res
+        or "Netpbm" in res
+        or "Maple" in res
+        or "i386" in res
+        or "archive data" in res
+        or "Motorola" in res
+        or "FoxPro" in res
+        or "packed data" in res
+        or "fsav" in res
+        or "crunched" in res
+        or "compress'd" in res
+        or "Terse" in res
+        or "SoftQuad" in res
+        or "Sendmail" in res
+        or "OS9" in res
+        or "MySQL" in res
+        or "IRIS" in res
+        or "Java" in res
+        or "SOFF" in res
+        or "PSI " in res
+        or "Clarion" in res
+        or "BIOS" in res
+        or "Atari" in res
+        or "Ai32" in res
+        or "ALAN" in res
+        or "44.1" in res
+        or "Microsoft" in res
+        or "TeX" in res
+        or "floppy" in res
+        or "GLF_BINARY" in res
+        or "AIN" in res
+        or "Alpha" in res
+        or "vfont" in res
+        or "DOS" in res
+        or "Sun disk" in res
+        or "Group 3" in res
+        or "Logitech" in res
+        or "Solitaire" in res
+        or "old " in res
+        or "SYMMETRY" in res
+        or "DOS/MBR" in res
+        or "Amiga" in res
+        or "mumps" in res
+        or "ID tags" in res
+        or "GLS" in res
+        or "dBase IV DBT" in res
+        or "TTComp" in res
+        or "EBCDIC" in res
+        or "MGR bitmap" in res
+        or "CLIPPER" in res
+        or "Dyalog" in res
+        or "PARIX" in res
+        or "AIX" in res
+        or "SysEx" in res
+        or "ARJ" in res
+        or "Applesoft" in res
+        or "GeoSwath" in res
+        or "ISO-8859" in res
+        or "YAC" in res
+        or "capture file" in res
+        or "COFF" in res
+        or "locale data table" in res
+        or "Ucode" in res
+        or "PDP" in res
+        or "LXT" in res
+        or "Tower" in res
+        or "SGI" in res
+        or "BS" in res
+        or "exe" in res
+        or "curses" in res
+        or "endian" in res
+        or "byte" in res
+        or "ASCII" in res
+    ):
         return None
     if "mcrypt" in res:
         return "mcrypt encrypted data"
@@ -113,7 +287,7 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
         return "gzip compressed data"
     if "GPG key public" in res:
         return "GPG public key ring"
-    if "PGP Secret" in res or 'PGP\\011Secret' in res:
+    if "PGP Secret" in res or "PGP\\011Secret" in res:
         return "PGP Secret key"
     if "PGP symmetric" in res:
         return "PGP symmetric key encrypted data"
@@ -123,27 +297,42 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
         return "Targa image data"
     return res
 
-def get_monero_offset_regex() -> re.Pattern:
-    return re.compile('offset\s(\d+):*')
 
-def monero_find_file_within_extra(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
+def get_monero_offset_regex() -> re.Pattern:
+    return re.compile("offset\s(\d+):*")
+
+
+def monero_find_file_within_extra(
+    detector_payload: DetectorPayload,
+    file_detector_func: Callable[[bytes], Optional[str]],
+) -> Optional[DetectedFilePayload]:
     extra_data = ExtraParser(detector_payload.data)
     probable_data_index = 0
-    try: 
+    try:
         parsed_extra = extra_data.parse()
         # check every first and second byte in the nonces
         if "nonces" in parsed_extra.keys():
             for nonce in parsed_extra["nonces"]:
                 res = file_detector_func(nonce)
                 if res is not None:
-                    return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
-        
+                    return DetectedFilePayload(
+                        detector_payload.txid,
+                        detector_payload.data_type,
+                        detector_payload.extra_index,
+                        res,
+                    )
+
         # check every first and second byte in the pubkey
         if "pubkeys" in parsed_extra.keys():
             for pubkey in parsed_extra["pubkeys"]:
                 res = file_detector_func(pubkey)
                 if res is not None:
-                    return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+                    return DetectedFilePayload(
+                        detector_payload.txid,
+                        detector_payload.data_type,
+                        detector_payload.extra_index,
+                        res,
+                    )
 
     except ValueError as err:
         # get the offset of the non-standard tx extra data
@@ -155,23 +344,43 @@ def monero_find_file_within_extra(detector_payload: DetectorPayload, file_detect
                 probable_data_index = int(match.group(1))
             res = file_detector_func(detector_payload.data[probable_data_index:])
             if res is not None:
-                return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+                return DetectedFilePayload(
+                    detector_payload.txid,
+                    detector_payload.data_type,
+                    detector_payload.extra_index,
+                    res,
+                )
 
     except BaseException:
         pass
 
     res = file_detector_func(detector_payload.data)
     if res is not None:
-        return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+        return DetectedFilePayload(
+            detector_payload.txid,
+            detector_payload.data_type,
+            detector_payload.extra_index,
+            res,
+        )
     return None
 
-def monero_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+
+def monero_find_file_with_magic(
+    detector_payload: DetectorPayload,
+) -> Optional[DetectedFilePayload]:
     return monero_find_file_within_extra(detector_payload, find_file_with_magic)
 
-def monero_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+
+def monero_find_file_with_imghdr(
+    detector_payload: DetectorPayload,
+) -> Optional[DetectedFilePayload]:
     return monero_find_file_within_extra(detector_payload, find_file_with_imghdr)
 
-def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
+
+def bitcoin_find_file_within_script(
+    detector_payload: DetectorPayload,
+    file_detector_func: Callable[[bytes], Optional[str]],
+) -> Optional[DetectedFilePayload]:
     data: bytes
     if type(detector_payload.data) == str:
         data = bytes.fromhex(detector_payload.data)
@@ -182,7 +391,12 @@ def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_dete
     # try finding a file in the full script
     res = file_detector_func(cscript)
     if res is not None:
-        return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+        return DetectedFilePayload(
+            detector_payload.txid,
+            detector_payload.data_type,
+            detector_payload.extra_index,
+            res,
+        )
     try:
         for op in cscript:
             # ignore single op codes
@@ -193,30 +407,61 @@ def bitcoin_find_file_within_script(detector_payload: DetectorPayload, file_dete
                 continue
             res = file_detector_func(op)
             if res is not None:
-                return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+                return DetectedFilePayload(
+                    detector_payload.txid,
+                    detector_payload.data_type,
+                    detector_payload.extra_index,
+                    res,
+                )
     except:
         res = file_detector_func(cscript)
         if res is not None:
-            return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+            return DetectedFilePayload(
+                detector_payload.txid,
+                detector_payload.data_type,
+                detector_payload.extra_index,
+                res,
+            )
         pass
     return None
 
-def bitcoin_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+
+def bitcoin_find_file_with_magic(
+    detector_payload: DetectorPayload,
+) -> Optional[DetectedFilePayload]:
     return bitcoin_find_file_within_script(detector_payload, find_file_with_magic)
 
-def bitcoin_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+
+def bitcoin_find_file_with_imghdr(
+    detector_payload: DetectorPayload,
+) -> Optional[DetectedFilePayload]:
     return bitcoin_find_file_within_script(detector_payload, find_file_with_imghdr)
 
-def ethereum_find_file_within_data(detector_payload: DetectorPayload, file_detector_func: Callable[[bytes], Optional[str]]) -> Optional[DetectedFilePayload]:
+
+def ethereum_find_file_within_data(
+    detector_payload: DetectorPayload,
+    file_detector_func: Callable[[bytes], Optional[str]],
+) -> Optional[DetectedFilePayload]:
     res = file_detector_func(detector_payload.data)
     if res is not None:
-        return DetectedFilePayload(detector_payload.txid, detector_payload.data_type, detector_payload.extra_index, res)
+        return DetectedFilePayload(
+            detector_payload.txid,
+            detector_payload.data_type,
+            detector_payload.extra_index,
+            res,
+        )
     return None
 
-def ethereum_find_file_with_magic(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+
+def ethereum_find_file_with_magic(
+    detector_payload: DetectorPayload,
+) -> Optional[DetectedFilePayload]:
     return ethereum_find_file_within_data(detector_payload, find_file_with_magic)
 
-def ethereum_find_file_with_imghdr(detector_payload: DetectorPayload) -> Optional[DetectedFilePayload]:
+
+def ethereum_find_file_with_imghdr(
+    detector_payload: DetectorPayload,
+) -> Optional[DetectedFilePayload]:
     return ethereum_find_file_within_data(detector_payload, find_file_with_imghdr)
 
 
@@ -233,7 +478,7 @@ class Analyzer:
         self._database = database
 
     def analyze(self, detector: Detector) -> None:
-        detector_func: DetectorFunc 
+        detector_func: DetectorFunc
         database_write_func: DatabaseWriteFunc
         if detector == Detector.native_strings:
             detector_func = native_strings
@@ -251,9 +496,13 @@ class Analyzer:
                 elif "ethereum" in self._blockchain.value:
                     detector_func = ethereum_find_file_with_magic
                 else:
-                    raise BaseException("no detector implementation for this blockchain / detector tuple")
+                    raise BaseException(
+                        "no detector implementation for this blockchain / detector tuple"
+                    )
             else:
-                raise BaseException("no detector implementation for this blockchain / detector tuple")
+                raise BaseException(
+                    "no detector implementation for this blockchain / detector tuple"
+                )
         elif detector == Detector.imghdr_files:
             database_write_func = self._database.insert_detected_imghdr_file_records
             if self._blockchain is not None:
@@ -264,8 +513,14 @@ class Analyzer:
                 elif "ethereum" in self._blockchain.value:
                     detector_func = ethereum_find_file_with_imghdr
                 else:
-                    raise BaseException("no detector implementation for this blockchain / detector tuple")
+                    raise BaseException(
+                        "no detector implementation for this blockchain / detector tuple"
+                    )
             else:
-                raise BaseException("no detector implementation for this blockchain / detector tuple")
+                raise BaseException(
+                    "no detector implementation for this blockchain / detector tuple"
+                )
 
-        self._database.run_detection(detector_func, database_write_func, self._blockchain)
+        self._database.run_detection(
+            detector_func, database_write_func, self._blockchain
+        )

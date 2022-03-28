@@ -36,7 +36,7 @@ class View:
 
         lengths_histogram_no_gaps = []
         counts_histogram_no_gaps = []
-        for i in range(10, np.max(lengths)+1):
+        for i in range(10, np.max(lengths) + 1):
             lengths_histogram_no_gaps.append(i)
             if i in lengths:
                 counts_histogram_no_gaps.append(int(counts[np.where(lengths == i)]))
@@ -47,7 +47,7 @@ class View:
         for i in range(34):
             accumulated_string_count.append(np.sum(counts_histogram_no_gaps[i:]))
         accumulated_string_count = np.array(accumulated_string_count)
-        minimum_string_lengths= np.arange(10, 10+34)
+        minimum_string_lengths = np.arange(10, 10 + 34)
         x3_pos = np.arange(34)
         color = self.get_matplotlib_color_from_blockchain()
 
@@ -59,14 +59,25 @@ class View:
             if i == 0:
                 compact_length_labels[0] = str(lengths[0])
             # add 10 more labels interspersed in the histogram, if the last label is too close omit it
-            if (i % (int(len(lengths) / 15))) == 0 and i < (len(lengths) - len(lengths) / 30):
+            if (i % (int(len(lengths) / 15))) == 0 and i < (
+                len(lengths) - len(lengths) / 30
+            ):
                 compact_length_labels[i] = lengths[i]
         compact_length_labels[-1] = str(lengths[-1])
         compact_length_labels = np.array(compact_length_labels)
 
-        print(x_pos, lengths, compact_length_labels, len(x_pos), len(lengths), len(compact_length_labels))
+        print(
+            x_pos,
+            lengths,
+            compact_length_labels,
+            len(x_pos),
+            len(lengths),
+            len(compact_length_labels),
+        )
 
-        fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes, Axes]] = plt.subplots(3, figsize=(12,10))
+        fig_axis_tuple: Tuple[Figure, Tuple[Axes, Axes, Axes]] = plt.subplots(
+            3, figsize=(12, 10)
+        )
         fig, (ax1, ax2, ax3) = fig_axis_tuple
         ax1.bar(x_pos, counts, color=color)
         ax1.set_xticks(x_pos, compact_length_labels)
@@ -74,7 +85,7 @@ class View:
         ax1.set_yscale("log")
         ax1.set_ylabel("counts")
         # ax1.set_title(self._blockchain.value + " Count of each detected string length")
-        plt.setp(ax1.get_xticklabels(), fontsize=7, rotation='vertical')
+        plt.setp(ax1.get_xticklabels(), fontsize=7, rotation="vertical")
 
         # truncate the histogram at 34 entries
         if len(lengths) > 34:
@@ -90,10 +101,16 @@ class View:
         ax2.set_yscale("log")
         ax2.set_ylabel("counts")
         # ax2.set_title(self._blockchain.value + " Truncated count of each detected string length")
-        plt.setp(ax2.get_xticklabels(), fontsize=7, rotation='vertical')
+        plt.setp(ax2.get_xticklabels(), fontsize=7, rotation="vertical")
 
-
-        print(x3_pos, accumulated_string_count, minimum_string_lengths, len(x3_pos), len(accumulated_string_count), len(minimum_string_lengths))
+        print(
+            x3_pos,
+            accumulated_string_count,
+            minimum_string_lengths,
+            len(x3_pos),
+            len(accumulated_string_count),
+            len(minimum_string_lengths),
+        )
 
         ax3.bar(x3_pos, accumulated_string_count, color=color)
         ax3.set_xticks(x3_pos, minimum_string_lengths)
@@ -101,12 +118,11 @@ class View:
         ax3.set_yscale("log")
         ax3.set_ylabel("counts")
         # ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
-        plt.setp(ax3.get_xticklabels(), fontsize=7, rotation='vertical')
+        plt.setp(ax3.get_xticklabels(), fontsize=7, rotation="vertical")
         plt.subplots_adjust(hspace=0.35)
 
         plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
         plt.show()
-
 
     def ascii_histogram(self):
         result = self._database.ascii_histogram(self._blockchain)
@@ -115,7 +131,7 @@ class View:
 
         lengths_histogram_no_gaps = []
         counts_histogram_no_gaps = []
-        for i in range(10, np.max(lengths)+1):
+        for i in range(10, np.max(lengths) + 1):
             lengths_histogram_no_gaps.append(i)
             if i in lengths:
                 counts_histogram_no_gaps.append(int(counts[np.where(lengths == i)]))
@@ -126,7 +142,7 @@ class View:
         for i in range(34):
             accumulated_string_count.append(np.sum(counts_histogram_no_gaps[i:]))
         accumulated_string_count = np.array(accumulated_string_count)
-        minimum_string_lengths= np.arange(10, 10+34)
+        minimum_string_lengths = np.arange(10, 10 + 34)
         x2_pos = np.arange(34)
         color = self.get_matplotlib_color_from_blockchain()
 
@@ -148,7 +164,7 @@ class View:
         ax1.set_yscale("log")
         ax1.set_ylabel("counts")
         # ax1.set_title(self._blockchain.value + " Count of each detected string length")
-        plt.setp(ax1.get_xticklabels(), fontsize=7, rotation='vertical')
+        plt.setp(ax1.get_xticklabels(), fontsize=7, rotation="vertical")
 
         ax2.bar(x2_pos, accumulated_string_count, color=color)
         ax2.set_xticks(x2_pos, minimum_string_lengths)
@@ -156,7 +172,7 @@ class View:
         ax2.set_yscale("log")
         ax2.set_ylabel("counts")
         # ax2.set_title(self._blockchain.value + " Count of detected strings with a minimum length")
-        plt.setp(ax2.get_xticklabels(), fontsize=7, rotation='vertical')
+        plt.setp(ax2.get_xticklabels(), fontsize=7, rotation="vertical")
         plt.subplots_adjust(hspace=0.43)
 
         plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
@@ -232,7 +248,72 @@ class View:
             if "GPG" in file_type and "key" in file_type:
                 gpg_key_count += count
                 continue
-            if "Windows metafile" in file_type or "Windows Precom" in file_type or "Macintosh MFS data" in file_type or "HP PCL" in file_type or "core file (Xenix)" in file_type or "compiled Lisp" in file_type or "Zebra Metafile" in file_type or "StarOffice Gallery" in file_type or "Minix filesystem" in file_type or "Macintosh HFS" in file_type or "MacBinary" in file_type or "Embedded OpenType" in file_type or "DIY-Thermocam" in file_type or "Apple HFS" in file_type or "object file" in file_type or "b.out" in file_type or "RISC OS" in file_type or "MMDF" in file_type or "Lotus" in file_type or "FuseCompress" in file_type or "FIGlet" in file_type or "AppleDouble" in file_type or "AppleSingle" in file_type or "MED_Song" in file_type or "Android binary" in file_type or "GDSII" in file_type or "SunOS" in file_type or "AppledDouble" in file_type or "Core file" in file_type or "MAthematica" in file_type or "Berkeley DB" in file_type or "Microstation" in file_type or "overlay object file" in file_type or "LADS" in file_type or "Netscape" in file_type or "ESRI Shapefile" in file_type or "Cytovision" in file_type or "i960" in file_type or "ddis" in file_type or "SPEC" in file_type or "MMFD" in file_type or "AHX" in file_type or "libfprint" in file_type or "SeqBox" in file_type or "Psion" in file_type or "PCP compiled" in file_type or "separate object" in file_type or "Compiled XKB" in file_type or "dar archive" in file_type or "cisco" in file_type or "Symbian" in file_type or "Spectrum .TAP" in file_type or "StuffIt" in file_type or "Spectrum" in file_type or "Spectrum" in file_type or "RAD" in file_type or "Psion Series" in file_type or "Progressive Graphics" in file_type or "Palm" in file_type or "LFS" in file_type or "GEM" in file_type or "ESRI Shapefile" in file_type or "keymap" in file_type or "Aster*x" in file_type:
+            if (
+                "Windows metafile" in file_type
+                or "Windows Precom" in file_type
+                or "Macintosh MFS data" in file_type
+                or "HP PCL" in file_type
+                or "core file (Xenix)" in file_type
+                or "compiled Lisp" in file_type
+                or "Zebra Metafile" in file_type
+                or "StarOffice Gallery" in file_type
+                or "Minix filesystem" in file_type
+                or "Macintosh HFS" in file_type
+                or "MacBinary" in file_type
+                or "Embedded OpenType" in file_type
+                or "DIY-Thermocam" in file_type
+                or "Apple HFS" in file_type
+                or "object file" in file_type
+                or "b.out" in file_type
+                or "RISC OS" in file_type
+                or "MMDF" in file_type
+                or "Lotus" in file_type
+                or "FuseCompress" in file_type
+                or "FIGlet" in file_type
+                or "AppleDouble" in file_type
+                or "AppleSingle" in file_type
+                or "MED_Song" in file_type
+                or "Android binary" in file_type
+                or "GDSII" in file_type
+                or "SunOS" in file_type
+                or "AppledDouble" in file_type
+                or "Core file" in file_type
+                or "MAthematica" in file_type
+                or "Berkeley DB" in file_type
+                or "Microstation" in file_type
+                or "overlay object file" in file_type
+                or "LADS" in file_type
+                or "Netscape" in file_type
+                or "ESRI Shapefile" in file_type
+                or "Cytovision" in file_type
+                or "i960" in file_type
+                or "ddis" in file_type
+                or "SPEC" in file_type
+                or "MMFD" in file_type
+                or "AHX" in file_type
+                or "libfprint" in file_type
+                or "SeqBox" in file_type
+                or "Psion" in file_type
+                or "PCP compiled" in file_type
+                or "separate object" in file_type
+                or "Compiled XKB" in file_type
+                or "dar archive" in file_type
+                or "cisco" in file_type
+                or "Symbian" in file_type
+                or "Spectrum .TAP" in file_type
+                or "StuffIt" in file_type
+                or "Spectrum" in file_type
+                or "Spectrum" in file_type
+                or "RAD" in file_type
+                or "Psion Series" in file_type
+                or "Progressive Graphics" in file_type
+                or "Palm" in file_type
+                or "LFS" in file_type
+                or "GEM" in file_type
+                or "ESRI Shapefile" in file_type
+                or "keymap" in file_type
+                or "Aster*x" in file_type
+            ):
                 continue
             if count == 1:
                 continue
@@ -305,11 +386,11 @@ class View:
         ax1.set_yscale("log")
         ax1.set_ylabel("counts")
         # ax1.set_title(self._blockchain.value + " Count of magic detected file types")
-        plt.setp(ax1.get_xticklabels(), fontsize=12, rotation='vertical')
+        plt.setp(ax1.get_xticklabels(), fontsize=12, rotation="vertical")
         plt.subplots_adjust(bottom=0.41)
         plt.savefig("magic_file_histogram_" + self._blockchain.value + ".pdf", dpi=600)
         plt.show()
-    
+
     def imghdr_file_histogram(self):
         result = self._database.imghdr_file_histogram(self._blockchain)
         file_types = np.array(list(map(lambda item: item[0], result)))
@@ -333,7 +414,7 @@ class View:
         ax1.set_yscale("log")
         ax1.set_ylabel("counts")
         # ax1.set_title(self._blockchain.value + " Count of imghdr detected file types")
-        plt.setp(ax1.get_xticklabels(), fontsize=12, rotation='vertical')
+        plt.setp(ax1.get_xticklabels(), fontsize=12, rotation="vertical")
         plt.savefig("imghdr_file_histogram_" + self._blockchain.value + ".pdf", dpi=600)
         plt.show()
 

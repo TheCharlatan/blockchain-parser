@@ -12,6 +12,7 @@ from parser import DataExtractor
 
 from view import View, ViewMode
 
+
 def unhexlify_str(h: str) -> bytes:
     return binascii.unhexlify(h.encode("ascii"))
 
@@ -21,11 +22,9 @@ def parse(blockchain_raw: str, raw_coin_path: str, database_name: str) -> None:
     # Create a parser
     parser: DataExtractor
     if "bitcoin" in blockchain_raw:
-        parser = BitcoinParser(
-            coin_path, BLOCKCHAIN.BITCOIN_REGTEST)
+        parser = BitcoinParser(coin_path, BLOCKCHAIN.BITCOIN_REGTEST)
     elif "ethereum" in blockchain_raw:
-        parser = EthereumParser(
-            coin_path, BLOCKCHAIN.ETHEREUM_MAINNET)
+        parser = EthereumParser(coin_path, BLOCKCHAIN.ETHEREUM_MAINNET)
     elif "monero" in blockchain_raw:
         parser = MoneroParser(coin_path, BLOCKCHAIN.MONERO_STAGENET)
     else:
@@ -37,6 +36,7 @@ def parse(blockchain_raw: str, raw_coin_path: str, database_name: str) -> None:
     # Parse the blockchains
     parser.parse_and_extract_blockchain(database)
     return
+
 
 def analyze(blockchain_raw: str, database_path: str, detector_raw: str) -> None:
     detector: Detector
@@ -56,6 +56,7 @@ def analyze(blockchain_raw: str, database_path: str, detector_raw: str) -> None:
     analyzer = Analyzer(blockchain, database)
     analyzer.analyze(detector)
     return
+
 
 def view(blockchain_raw: str, database_path: str, mode_raw: str) -> None:
     blockchain = coinStringToCoin(blockchain_raw)
@@ -88,8 +89,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "-b",
         "--blockchain",
-        choices=("bitcoin_mainnet", "bitcoin_testnet3", "bitcoin_regtest", "monero_mainnet", "monero_stagenet", "monero_testnet", "ethereum_mainnet"),
-        help="Blockchain to target. Required argument, only single targets are allowed."
+        choices=(
+            "bitcoin_mainnet",
+            "bitcoin_testnet3",
+            "bitcoin_regtest",
+            "monero_mainnet",
+            "monero_stagenet",
+            "monero_testnet",
+            "ethereum_mainnet",
+        ),
+        help="Blockchain to target. Required argument, only single targets are allowed.",
     )
     parser.add_argument(
         "-p",
@@ -98,19 +107,24 @@ if __name__ == "__main__":
                 ~/.ethereum
                 ~/.bitmonero
                 ~/.bitcoin
-            """
+            """,
     )
     parser.add_argument(
         "-a",
         "--analyze",
         help="Run the tool in analysis mode to detect specific data types",
-        choices=("native_strings", "gnu_strings", "imghdr_files", "magic_files")
+        choices=("native_strings", "gnu_strings", "imghdr_files", "magic_files"),
     )
     parser.add_argument(
         "-v",
         "--view",
         help="Run the to tool in view mode to further analysis",
-        choices=("ascii_histogram", "magic_file_histogram", "imghdr_file_histogram", "record_stats")
+        choices=(
+            "ascii_histogram",
+            "magic_file_histogram",
+            "imghdr_file_histogram",
+            "record_stats",
+        ),
     )
 
     # Parse the command line arguments

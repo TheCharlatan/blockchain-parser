@@ -70,7 +70,7 @@ def b128_decode(data):
     n = 0
     i = 0
     while True:
-        d = int(data[2 * i: 2 * i + 2], 16)
+        d = int(data[2 * i : 2 * i + 2], 16)
         n = n << 7 | d & 0x7F
         if d & 0x80:
             n += 1
@@ -89,7 +89,7 @@ def parse_b128(utxo, offset=0):
     :rtype: hex str, int
     """
 
-    data = utxo[offset: offset + 2]
+    data = utxo[offset : offset + 2]
     offset += 2
     more_bytes = (
         int(data, 16) & 0x80
@@ -97,8 +97,8 @@ def parse_b128(utxo, offset=0):
     # indicating that there is an additional byte following the one being analyzed. If bit 128 of the byte being read is
     # not set, we are analyzing the last byte, otherwise, we should continue reading.
     while more_bytes:
-        data += utxo[offset: offset + 2]
-        more_bytes = int(utxo[offset: offset + 2], 16) & 0x80
+        data += utxo[offset : offset + 2]
+        more_bytes = int(utxo[offset : offset + 2], 16) & 0x80
         offset += 2
 
     return data, offset
@@ -274,9 +274,7 @@ def parse_ldb(
 
 class UTXOIterator:
     def __init__(
-        self,
-        path: Path=Path("/home/drgrid/.bitcoin"),
-        fin_name: str="chainstate",
+        self, path: Path = Path("/home/drgrid/.bitcoin"), fin_name: str = "chainstate",
     ) -> None:
         """
         Parsed data from the chainstate LevelDB and stores it in a output file.
@@ -310,7 +308,7 @@ class UTXOIterator:
         self._o_key = o_key
         self._prefix = prefix
         self._iterator = db.iterator(prefix=prefix)
-    
+
     def __iter__(self):
         return self
 

@@ -13,6 +13,7 @@ from pathlib import Path
 
 class BitcoinDataMessage(NamedTuple):
     """ZMQ Message for the DatabaseWriter thread with contents to be written to the database"""
+
     data: bytes
     txid: str
     data_type: DATATYPE
@@ -24,7 +25,9 @@ class DatabaseWriter(threading.Thread):
     """DatabaseWriter acts as a worker thread for writing to the sql database
     and receives from a zmq socket"""
 
-    def __init__(self, database: Database, receiver: zmq.Socket, blockchain: BLOCKCHAIN):
+    def __init__(
+        self, database: Database, receiver: zmq.Socket, blockchain: BLOCKCHAIN
+    ):
         """
         :param database: Database to be written into
         :type database: Database
@@ -42,21 +45,22 @@ class DatabaseWriter(threading.Thread):
         while True:
             message: BitcoinDataMessage = self._receiver.recv_pyobj()
 
-            records.append(CryptoDataRecord(
-                message.data,
-                message.txid,
-                self._blockchain.value,
-                message.data_type.value,
-                message.block_height,
-                message.extra_index,
-            ))
+            records.append(
+                CryptoDataRecord(
+                    message.data,
+                    message.txid,
+                    self._blockchain.value,
+                    message.data_type.value,
+                    message.block_height,
+                    message.extra_index,
+                )
+            )
 
             if len(records) > 500:
                 print("writing:", records[0])
                 self._db.insert_records(records)
                 # print(self._coin.value + " written")
                 records = []
-
 
 
 opcode_counters = {
@@ -384,7 +388,9 @@ class BitcoinParser(DataExtractor):
         :type database: Database
         """
 
-        blockchain = Blockchain(os.path.expanduser(str(self._blockchain_path) + "/blocks"))
+        blockchain = Blockchain(
+            os.path.expanduser(str(self._blockchain_path) + "/blocks")
+        )
         height = 0
         total_txs = 0
         ignored_tx_inputs = 0
@@ -401,11 +407,15 @@ class BitcoinParser(DataExtractor):
         writer = DatabaseWriter(database, database_event_receiver, self._blockchain)
         writer.start()
 
-        print("commencing bitcoin parsing of " + str(self._blockchain_path) + "/blocks/index")
-
+        print(
+            "commencing bitcoin parsing of "
+            + str(self._blockchain_path)
+            + "/blocks/index"
+        )
 
         for block in blockchain.get_ordered_blocks(
-            os.path.expanduser(str(self._blockchain_path.absolute()) + "/blocks/index"), end=2100000
+            os.path.expanduser(str(self._blockchain_path.absolute()) + "/blocks/index"),
+            end=2100000,
         ):
             height += 1
             for (tx_index, tx) in enumerate(block.transactions):
@@ -434,7 +444,15 @@ class BitcoinParser(DataExtractor):
                         ignored_tx_inputs += 1
                         continue
 
-                    database_event_sender.send_pyobj(BitcoinDataMessage(input.scriptSig, tx.txid, DATATYPE.SCRIPT_SIG, block.height, input_index))
+                    database_event_sender.send_pyobj(
+                        BitcoinDataMessage(
+                            input.scriptSig,
+                            tx.txid,
+                            DATATYPE.SCRIPT_SIG,
+                            block.height,
+                            input_index,
+                        )
+                    )
 
                 for (output_index, output) in enumerate(c_tx.vout):
                     tx_outputs += 1
@@ -468,20 +486,46 @@ class BitcoinParser(DataExtractor):
                         continue
 
                     # print("nonstandard output:", output)
-                    database_event_sender.send_pyobj(BitcoinDataMessage(output.scriptPubKey, tx.txid, DATATYPE.SCRIPT_PUBKEY, block.height, output_index))
+                    database_event_sender.send_pyobj(
+                        BitcoinDataMessage(
+                            output.scriptPubKey,
+                            tx.txid,
+                            DATATYPE.SCRIPT_PUBKEY,
+                            block.height,
+                            output_index,
+                        )
+                    )
 
             if height % 500 == 0:
-                print("bitcoin parsed until height:", height, "n inputs:", tx_inputs, "n ignored inputs:", ignored_tx_inputs, "n outputs:", tx_outputs, "n ignored outputs:", ignored_tx_outputs)
-
+                print(
+                    "bitcoin parsed until height:",
+                    height,
+                    "n inputs:",
+                    tx_inputs,
+                    "n ignored inputs:",
+                    ignored_tx_inputs,
+                    "n outputs:",
+                    tx_outputs,
+                    "n ignored outputs:",
+                    ignored_tx_outputs,
+                )
 
         print("Completed blockchain parsing, commencing UTXO parsing")
 
         utxo_counter = 0
         for utxo in UTXOIterator(path=self._blockchain_path):
             utxo_counter += 1
-            if (utxo_counter % 1000 == 0):
+            if utxo_counter % 1000 == 0:
                 print(utxo_counter)
             print("out data:", utxo["out"]["data"], "txid:", utxo["tx_id"])
-            database_event_sender.send_pyobj(BitcoinDataMessage(utxo["out"]["data"], utxo["tx_id"], DATATYPE.SCRIPT_PUBKEY, utxo["height"], utxo["index"]))
+            database_event_sender.send_pyobj(
+                BitcoinDataMessage(
+                    utxo["out"]["data"],
+                    utxo["tx_id"],
+                    DATATYPE.SCRIPT_PUBKEY,
+                    utxo["height"],
+                    utxo["index"],
+                )
+            )
 
         print("Completed UTXO parsing")

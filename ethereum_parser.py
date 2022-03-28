@@ -13,7 +13,8 @@ from pathlib import Path
 ERC20_TRANSFER_METHOD_ID = bytes.fromhex("a9059cbb")
 ERC20_APPROVE_METHOD_ID = bytes.fromhex("095ea7b3")
 ERC20_TRANSFER_FROM_METHOD_ID = bytes.fromhex("23b872dd")
-ETH_LEADING_12_ZERO_BYTES = bytes.fromhex("0"*24)
+ETH_LEADING_12_ZERO_BYTES = bytes.fromhex("0" * 24)
+
 
 def check_if_template_contract_call(tx_data: bytes) -> bool:
     """"Checks if the provide tx_data contains one of the standard ERC20 function invocations
@@ -24,7 +25,10 @@ def check_if_template_contract_call(tx_data: bytes) -> bool:
 
     # transfer(address _to, uint256 _value) method_id: 0xa9059cbb
     # approve(address _spender, uint256 _value) method_id: 0x095ea7b3
-    if tx_data[0:4] == ERC20_TRANSFER_METHOD_ID or tx_data[0:4] == ERC20_APPROVE_METHOD_ID:
+    if (
+        tx_data[0:4] == ERC20_TRANSFER_METHOD_ID
+        or tx_data[0:4] == ERC20_APPROVE_METHOD_ID
+    ):
         # the length of these contract calls is exactly 68 bytes
         if len(tx_data) != 68:
             return False
@@ -38,14 +42,18 @@ def check_if_template_contract_call(tx_data: bytes) -> bool:
         if len(tx_data) != 100:
             return False
         # check that the addresses are present, by checking the number of zeroes
-        if not (tx_data[4:16] == ETH_LEADING_12_ZERO_BYTES and tx_data[36:48] == ETH_LEADING_12_ZERO_BYTES):
-           return False
+        if not (
+            tx_data[4:16] == ETH_LEADING_12_ZERO_BYTES
+            and tx_data[36:48] == ETH_LEADING_12_ZERO_BYTES
+        ):
+            return False
         return True
     return False
 
 
 class EthereumDataMessage(NamedTuple):
     """Named Tuple for the zmq message for writing prased and extracted data to the database"""
+
     data: bytes
     txid: bytes
     data_type: DATATYPE
@@ -56,7 +64,9 @@ class DatabaseWriter(threading.Thread):
     """DatabaseWriter acts as a worker thread for writing to the sql database
     and receives from a zmq socket"""
 
-    def __init__(self, database: Database, receiver: zmq.Socket, blockchain: BLOCKCHAIN):
+    def __init__(
+        self, database: Database, receiver: zmq.Socket, blockchain: BLOCKCHAIN
+    ):
         """
         :param database: Database to be written into
         :type database: Database
@@ -74,14 +84,16 @@ class DatabaseWriter(threading.Thread):
         while True:
             message: EthereumDataMessage = self._receiver.recv_pyobj()
 
-            records.append((
-                message.data,
-                message.txid,
-                self._blockchain.value,
-                message.data_type.value,
-                message.block_height,
-                0
-            ))
+            records.append(
+                (
+                    message.data,
+                    message.txid,
+                    self._blockchain.value,
+                    message.data_type.value,
+                    message.block_height,
+                    0,
+                )
+            )
 
             if len(records) > 500:
                 print("ethereum writing to DB...", records[0])
@@ -124,14 +136,22 @@ class EthereumParser(DataExtractor):
                 if check_if_template_contract_call(tx.data):
                     continue
 
-                database_event_sender.send_pyobj(EthereumDataMessage(tx.data, tx.hash(), DATATYPE.TX_DATA, height))
+                database_event_sender.send_pyobj(
+                    EthereumDataMessage(tx.data, tx.hash(), DATATYPE.TX_DATA, height)
+                )
 
         print("done parsing ethereum blocks, now parsing ethereum headers")
 
         for height, header in enumerate(
-            ParseEthereumBlockHeaders(self._ancient_chaindata_path, self._chaindata_path)
+            ParseEthereumBlockHeaders(
+                self._ancient_chaindata_path, self._chaindata_path
+            )
         ):
             if len(header.Extra) > 0:
-                database_event_sender.send_pyobj(EthereumDataMessage(header.Extra, header.TxHash, DATATYPE.TX_DATA, height))
+                database_event_sender.send_pyobj(
+                    EthereumDataMessage(
+                        header.Extra, header.TxHash, DATATYPE.TX_DATA, height
+                    )
+                )
 
         print("\n\n Completed Ethereum Parsing \n\n")
