@@ -37,7 +37,7 @@ cd ~/monero-serialize
 git checkout txMetaData
 ```
 
-### Install pyenv and pipenv
+### Install pyenv
 
 On ubuntu/debian:
 
@@ -56,7 +56,7 @@ curl https://pyenv.run | bash
 Read the manual [here](https://github.com/pyenv/pyenv#basic-github-checkout) on
 how to configure the correct environment variables for pyenv.
 
-Install pipenv:
+### Install pipenv
 
 ```
 pyenv global 3.7.0
@@ -79,8 +79,9 @@ LD_LIBRARY_PATH="/usr/local/lib:/home/drgrid/monero/external/db_drivers/liblmdb"
     pipenv run python main.py --help
 ```
 
-The help text should self-describe the usage of the parsers. Currently the
-parsers read data directly from the fullnode database.
+The help text should self-describe the usage of the parsers. The parsers read
+data directly from the blockchain database. The blockchain-parser thus requires
+access to the directory where the blockchain database files are located.
 
 
 ### IDE integration
