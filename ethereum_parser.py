@@ -1,5 +1,5 @@
 import threading
-from typing import NamedTuple, Optional, Dict
+from typing import NamedTuple
 
 import zmq
 from database import BLOCKCHAIN, DATATYPE, Database

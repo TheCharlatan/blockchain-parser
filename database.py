@@ -345,7 +345,7 @@ class Database:
             detected_count += 1
             if len(results) > 100:
                 database_write_func(results, conn)
-                print("counter: ", counter, "number detected: ", detected_count, "total raw data rows: ", res)
+                print("counter: ", counter, "number detected: ", detected_count, "total raw data rows: ", res, "last written:", results[0])
                 conn.commit()
                 results = []
 
