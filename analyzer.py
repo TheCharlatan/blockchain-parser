@@ -4,7 +4,7 @@ import sqlite3
 import string
 import subprocess
 import threading
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional, Text
 import magic
 import imghdr
 from bitcoin.core import CScript, script
@@ -127,12 +127,18 @@ def find_file_with_imghdr(data: bytes) -> Optional[str]:
 
 def find_file_with_magic(data: bytes) -> Optional[str]:
     """Find files with the help of magic numbers library"""
+    res: Text
     if len(data) < 8:
         return None
-    res = magic_handle.from_buffer(data)
-    # try again with a potential padding byte removed
-    if res == "data":
-        res = magic_handle.from_buffer(data[1:])
+    try:
+        res = magic_handle.from_buffer(data)
+        # try again with a potential padding byte removed
+        if res == "data":
+            res = magic_handle.from_buffer(data[1:])
+    except BaseException as e:
+        print(e)
+        # ignore any exceptions and return None
+        return None
     if (
         res == "data"
         or res == "shared library"
