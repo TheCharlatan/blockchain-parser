@@ -26,6 +26,17 @@ export LMDB_LIBDIR=~/monero/external/db_drivers/liblmdb
 If in doubt, consult this [stackexchange
 answer](https://monero.stackexchange.com/questions/12234/python-lmdb-version-mismatch).
 
+### Prepare monero-serialize
+
+Monero-serialize requires local, unpublished patches. For this clone the
+repository and checkout the patched branch:
+
+```
+git clone https://github.com/TheCharlatan/monero-serialize
+cd ~/monero-serialize
+git checkout txMetaData
+```
+
 ### Install pyenv and pipenv
 
 On ubuntu/debian:
@@ -53,19 +64,6 @@ pip install pipenv
 ```
 
 ### Install dependencies with pipenv
-
-```
-pipenv install 
-```
-
-Monero-serialize requires local, unpublished patches. For this clone the
-repository:
-
-```
-git clone https://github.com/TheCharlatan/monero-serialize
-```
-
-And install it with:
 
 ```
 pipenv install ~/monero-serialize
