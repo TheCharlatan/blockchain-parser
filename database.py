@@ -343,9 +343,9 @@ class Database:
         conn = sqlite3.connect(self.name)
         counter = 0
         detected_count = 0
-        res = conn.execute("SELECT COUNT(TXID) FROM cryptoData")
-        for i in res:
-            res = i
+        total_rows= conn.execute("SELECT COUNT(TXID) FROM cryptoData")
+        for i in total_rows:
+            total_rows = i[0]
         prepared_query = "SELECT * FROM cryptoData"
         if blockchain is not None:
             prepared_query += "WHERE COIN=blockchain.value"
@@ -368,7 +368,9 @@ class Database:
                     "number detected: ",
                     detected_count,
                     "total raw data rows: ",
-                    res,
+                    total_rows,
+                    "percentage completed: ",
+                    counter/total_rows,
                     "last written:",
                     results[0],
                 )
