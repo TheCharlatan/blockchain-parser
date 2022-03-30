@@ -266,6 +266,7 @@ class View:
                 or "SPARC" in file_type
                 or "ispell hash" in file_type
                 or "SoundBlaster" in file_type
+                or "Squeak image" in file_type
                 or "Windows Precom" in file_type
                 or "Macintosh MFS data" in file_type
                 or "HP PCL" in file_type
