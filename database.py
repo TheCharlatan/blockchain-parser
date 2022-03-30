@@ -387,5 +387,5 @@ class Database:
             "number detected: ",
             detected_count,
             "total rows: ",
-            res,
+            total_rows,
         )
