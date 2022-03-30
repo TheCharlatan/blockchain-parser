@@ -87,6 +87,8 @@ def native_strings(
 
     result = ""
     for c in detector_payload.data:
+        if type(c) is not int:
+            continue
         if chr(c) in string.printable:
             result += chr(c)
             continue
