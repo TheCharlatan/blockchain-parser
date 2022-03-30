@@ -1,11 +1,12 @@
 import enum
-from typing import Optional, Tuple
+from typing import Iterable, Optional, Tuple
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from database import BLOCKCHAIN, Database
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+import csv
 
 
 class ViewMode(enum.Enum):
@@ -14,6 +15,12 @@ class ViewMode(enum.Enum):
     IMGHDR_FILE_HISTOGRAM = "imghdr_file_histogram"
     RECORD_STATS = "record_stats"
 
+def write_csv(file_name: str, row_1: Iterable, label_1: str, row_2: Iterable, label_2: str) -> None:
+    f = open(file_name + ".csv", 'w')
+    writer = csv.writer(f)
+    writer.writerow([label_1, label_2])
+    writer.writerows(zip(row_1, row_2))
+    f.close()
 
 class View:
     def get_matplotlib_color_from_blockchain(self) -> str:
@@ -30,6 +37,8 @@ class View:
         result = self._database.ascii_histogram(self._blockchain)
         lengths = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
+
+        write_csv("ascii_histogram_" + self._blockchain.value, lengths, "lengths", counts, "counts")
 
         if len(counts) < 35:
             return self.ascii_histogram()
@@ -367,6 +376,8 @@ class View:
         file_types = np.array(filtered_file_types)
         counts = np.array(filtered_counts)
 
+        write_csv("magic_file_histogram_" + self._blockchain.value, file_types, "file_types", counts, "counts")
+
         print(file_types, counts, len(file_types), len(counts))
 
         truncated_file_types = []
@@ -396,6 +407,8 @@ class View:
         file_types = np.array(list(map(lambda item: item[0], result)))
         counts = np.array(list(map(lambda item: item[1], result)))
         print(file_types, counts, len(file_types), len(counts))
+        write_csv("imghdr_file_histogram_" + self._blockchain.value, file_types, "file_types", counts, "counts")
+
 
         truncated_file_types = []
         for file_type in file_types:

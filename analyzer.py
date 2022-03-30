@@ -1,17 +1,12 @@
-from concurrent.futures import ThreadPoolExecutor
 import enum
-import sqlite3
 import string
 import subprocess
-import threading
-from typing import Any, Callable, Iterable, Optional, Text
+from typing import Any, Callable, Optional, Text
 import magic
 import imghdr
 from bitcoin.core import CScript, script
 from monero.transaction import ExtraParser
 import re
-
-import zmq
 
 from database import (
     BLOCKCHAIN,
