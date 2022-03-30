@@ -259,6 +259,13 @@ class View:
                 continue
             if (
                 "Windows metafile" in file_type
+                or "Bacula volume" in file_type
+                or "Concise Binary Object Representation" in file_type
+                or "DEC SRC" in file_type
+                or "EdLib" in file_type
+                or "SPARC" in file_type
+                or "ispell hash" in file_type
+                or "SoundBlaster" in file_type
                 or "Windows Precom" in file_type
                 or "Macintosh MFS data" in file_type
                 or "HP PCL" in file_type
