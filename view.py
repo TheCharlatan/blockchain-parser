@@ -210,6 +210,9 @@ class View:
         lzma_count = 0
         gif_count = 0
         pdf_count = 0
+        mp3_count = 0
+        msx_count = 0
+        musepack_count = 0
 
         for file_type, count in zip(file_types, counts):
             if "GIF" in file_type:
@@ -256,6 +259,15 @@ class View:
                 continue
             if "GPG" in file_type and "key" in file_type:
                 gpg_key_count += count
+                continue
+            if "Audio file with ID3 version" in file_type or "MP3" in file_type:
+                mp3_count += count
+                continue
+            if "MSX" in file_type:
+                msx_count += count
+                continue
+            if "Musepack" in file_type:
+                musepack_count += count
                 continue
             if (
                 "Windows metafile" in file_type
@@ -381,6 +393,16 @@ class View:
         if pdf_count > 0:
             filtered_file_types.append("PDF document")
             filtered_counts.append(pdf_count)
+        if mp3_count > 0:
+            filtered_file_types.append("MP3 audio")
+            filtered_counts.append(mp3_count)
+        if msx_count > 0:
+            filtered_file_types.append("MSX music file")
+            filtered_counts.append(msx_count)
+        if musepack_count > 0:
+            filtered_file_types.append("Musepack audio")
+            filtered_counts.append(musepack_count)
+
         file_types = np.array(filtered_file_types)
         counts = np.array(filtered_counts)
 
