@@ -271,6 +271,7 @@ class View:
                 continue
             if (
                 "Windows metafile" in file_type
+                or "TOC sound file" in file_type
                 or "Bacula volume" in file_type
                 or "Concise Binary Object Representation" in file_type
                 or "DEC SRC" in file_type
