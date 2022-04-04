@@ -291,15 +291,6 @@ def is_p2pk_output(cscript: CScript) -> bool:
 
 
 def is_p2sh_output(cscript: CScript) -> bool:
-    if len(cscript) != 23:
-        return False
-    return (
-        cscript[0] == script.OP_HASH160
-        and cscript[-1] == script.OP_EQUAL
-    )
-
-
-def is_p2sh_output(cscript: CScript) -> bool:
     """Checks if the output script is of the form:
             OP_HASH160 <hash> OP_EQUAL
     :param script: Script to be analyzed.

@@ -310,7 +310,6 @@ def monero_find_file_within_extra(
     file_detector_func: Callable[[bytes], Optional[str]],
 ) -> Optional[DetectedFilePayload]:
     extra_data = ExtraParser(detector_payload.data)
-    probable_data_index = 0
     try:
         parsed_extra = extra_data.parse()
         # check every first and second byte in the nonces
@@ -345,14 +344,14 @@ def monero_find_file_within_extra(
         else:
             if match.group(1) is not None:
                 probable_data_index = int(match.group(1))
-            res = file_detector_func(detector_payload.data[probable_data_index:])
-            if res is not None:
-                return DetectedFilePayload(
-                    detector_payload.txid,
-                    detector_payload.data_type,
-                    detector_payload.extra_index,
-                    res,
-                )
+                res = file_detector_func(detector_payload.data[probable_data_index:])
+                if res is not None:
+                    return DetectedFilePayload(
+                        detector_payload.txid,
+                        detector_payload.data_type,
+                        detector_payload.extra_index,
+                        res,
+                    )
 
     except BaseException:
         pass
