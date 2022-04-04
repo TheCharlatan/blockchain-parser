@@ -9,7 +9,7 @@ import bitcoin.rpc
 import os
 from bitcoin_utxo_iterator import UTXOIterator
 from pathlib import Path
-
+from bitcoin.core import CScript, script, CTransaction
 
 class BitcoinDataMessage(NamedTuple):
     """ZMQ Message for the DatabaseWriter thread with contents to be written to the database"""
@@ -64,22 +64,22 @@ class DatabaseWriter(threading.Thread):
 
 
 opcode_counters = {
-    bitcoin.core.script.OP_1: 1,
-    bitcoin.core.script.OP_2: 2,
-    bitcoin.core.script.OP_3: 3,
-    bitcoin.core.script.OP_4: 4,
-    bitcoin.core.script.OP_5: 5,
-    bitcoin.core.script.OP_6: 6,
-    bitcoin.core.script.OP_7: 7,
-    bitcoin.core.script.OP_8: 8,
-    bitcoin.core.script.OP_9: 9,
-    bitcoin.core.script.OP_10: 10,
-    bitcoin.core.script.OP_11: 11,
-    bitcoin.core.script.OP_12: 12,
-    bitcoin.core.script.OP_13: 13,
-    bitcoin.core.script.OP_14: 14,
-    bitcoin.core.script.OP_15: 15,
-    bitcoin.core.script.OP_16: 16,
+    script.OP_1: 1,
+    script.OP_2: 2,
+    script.OP_3: 3,
+    script.OP_4: 4,
+    script.OP_5: 5,
+    script.OP_6: 6,
+    script.OP_7: 7,
+    script.OP_8: 8,
+    script.OP_9: 9,
+    script.OP_10: 10,
+    script.OP_11: 11,
+    script.OP_12: 12,
+    script.OP_13: 13,
+    script.OP_14: 14,
+    script.OP_15: 15,
+    script.OP_16: 16,
 }
 
 
@@ -151,11 +151,11 @@ def is_pubkeys(pubkeys: bytes, number_of_keys: int) -> bool:
     return True
 
 
-def is_p2pk_scriptsig(script: bitcoin.core.script.CScript) -> bool:
+def is_p2pk_scriptsig(script: CScript) -> bool:
     """Checks if the input script of the form:
             <sig>
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2pk input script.
     :rtype: bool
     """
@@ -177,11 +177,11 @@ def is_p2pk_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return is_p2pk
 
 
-def is_p2pkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
+def is_p2pkh_scriptsig(script: CScript) -> bool:
     """Checks if the input script of the form:
             <sig> <pubkey>
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2pkh input script.
     :rtype: bool
     """
@@ -205,19 +205,19 @@ def is_p2pkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return True
 
 
-def is_p2sh_p2ms_scriptsig(script: bitcoin.core.script.CScript) -> bool:
+def is_p2sh_p2ms_scriptsig(cscript: CScript) -> bool:
     """Checks if the input script of the form:
             OP_0 <sigs> OP_N <pubkeys> OP_N OP_CHECKMULTISIG
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2sh(p2ms) input script.
     :rtype: bool
     """
 
     # P2SH inputs always start with OP_0
-    if len(script) < 96:
+    if len(cscript) < 96:
         return False
-    for (elem_index, elem) in enumerate(script):
+    for (elem_index, elem) in enumerate(cscript):
         # This is pushed because of the P2MS bug: it always requires an extra element on the stack
         if elem == 0x00 and elem_index == 0:
             continue
@@ -225,7 +225,7 @@ def is_p2sh_p2ms_scriptsig(script: bitcoin.core.script.CScript) -> bool:
             return False
         # Check the redeem script for p2ms
         if elem[0] in opcode_counters.keys():
-            if elem[-1] != bitcoin.core.script.OP_CHECKMULTISIG:
+            if elem[-1] != script.OP_CHECKMULTISIG:
                 return False
             if elem[-2] not in opcode_counters.keys():
                 return False
@@ -241,11 +241,11 @@ def is_p2sh_p2ms_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return True
 
 
-def is_p2sh_p2wpkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
+def is_p2sh_p2wpkh_scriptsig(script: CScript) -> bool:
     """Checks if the input script of the form:
             OP_O <hash>
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2sh(p2wpkh) input script.
     :rtype: bool
     """
@@ -257,57 +257,66 @@ def is_p2sh_p2wpkh_scriptsig(script: bitcoin.core.script.CScript) -> bool:
     return True
 
 
-def is_p2pkh_output(script: bitcoin.core.script.CScript) -> bool:
+def is_p2pkh_output(cscript: CScript) -> bool:
     """Checks if the output script is of the form:
             OP_DUP OP_HASH160 <hash> OP_EQUALVERIFY OP_CHECKSIG
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2pkh output script.
     :rtype: bool
     """
 
-    if len(script) != 25:
+    if len(cscript) != 25:
         return False
     return (
-        script[0] == bitcoin.core.script.OP_DUP
-        and script[1] == bitcoin.core.script.OP_HASH160
-        and script[23] == bitcoin.core.script.OP_EQUALVERIFY
-        and script[24] == bitcoin.core.script.OP_CHECKSIG
+        cscript[0] == script.OP_DUP
+        and cscript[1] == script.OP_HASH160
+        and cscript[23] == script.OP_EQUALVERIFY
+        and cscript[24] == script.OP_CHECKSIG
     )
 
 
-def is_p2pk_output(script: bitcoin.core.script.CScript) -> bool:
+def is_p2pk_output(cscript: CScript) -> bool:
     """Checks if the output script is of the form:
             <pubkey> OP_CHECKSIG
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2pk output script.
     :rtype: bool
     """
 
-    if len(script) < 33:
+    if len(cscript) < 33:
         return False
-    return is_pubkey(script[1:-1]) and script[-1] == bitcoin.core.script.OP_CHECKSIG
+    return is_pubkey(cscript[1:-1]) and cscript[-1] == script.OP_CHECKSIG
 
 
-def is_p2sh_output(script: bitcoin.core.script.CScript) -> bool:
+def is_p2sh_output(cscript: CScript) -> bool:
+    if len(cscript) != 23:
+        return False
+    return (
+        cscript[0] == script.OP_HASH160
+        and cscript[-1] == script.OP_EQUAL
+    )
+
+
+def is_p2sh_output(cscript: CScript) -> bool:
     """Checks if the output script is of the form:
             OP_HASH160 <hash> OP_EQUAL
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2sh output script.
     :rtype: bool
     """
 
-    if len(script) != 23:
+    if len(cscript) != 23:
         return False
     return (
-        script[0] == bitcoin.core.script.OP_HASH160
-        and script[-1] == bitcoin.core.script.OP_EQUAL
+        cscript[0] == script.OP_HASH160
+        and cscript[-1] == script.OP_EQUAL
     )
 
 
-def is_p2ms_output(script: bitcoin.core.script.CScript) -> bool:
+def is_p2ms_output(cscript: CScript) -> bool:
     """Checks if the output script is of the form:
             OP_N <pubkeys> OP_N OP_CHECKMULTISIG
     :param script: Script to be analyzed.
@@ -316,58 +325,58 @@ def is_p2ms_output(script: bitcoin.core.script.CScript) -> bool:
     :rtype: bool
     """
 
-    if len(script) < 33:
+    if len(cscript) < 33:
         return False
-    if script[0] not in opcode_counters.keys():
+    if cscript[0] not in opcode_counters.keys():
         return False
-    if script[-2] not in opcode_counters.keys():
+    if cscript[-2] not in opcode_counters.keys():
         return False
-    num_pubkeys = opcode_counters[script[-2]]
-    if not is_pubkeys(script[2:-2], num_pubkeys):
+    num_pubkeys = opcode_counters[cscript[-2]]
+    if not is_pubkeys(cscript[2:-2], num_pubkeys):
         return False
-    return script[-1] == bitcoin.core.script.OP_CHECKMULTISIG
+    return cscript[-1] == script.OP_CHECKMULTISIG
 
 
-def is_p2wpkh_output(script: bitcoin.core.script.CScript) -> bool:
+def is_p2wpkh_output(cscript: CScript) -> bool:
     """Checks if the output script if of the form:
             OP_0 <pubkey hash>
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2wpkh output script.
     :rtype: bool
     """
 
-    if len(script) != 22:
+    if len(cscript) != 22:
         return False
-    return script[0] == bitcoin.core.script.OP_0
+    return cscript[0] == script.OP_0
 
 
-def is_p2wsh_output(script: bitcoin.core.script.CScript) -> bool:
+def is_p2wsh_output(cscript: CScript) -> bool:
     """Checks if the output script if of the form:
             OP_0 <script hash>
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2wsh output script.
     :rtype: bool
     """
 
-    if len(script) != 34:
+    if len(cscript) != 34:
         return False
-    return script[0] == bitcoin.core.script.OP_0
+    return cscript[0] == script.OP_0
 
 
-def is_p2tr_output(script: bitcoin.core.script.CScript) -> bool:
+def is_p2tr_output(cscript: CScript) -> bool:
     """Checks if the output script if of the form:
             OP_1 <x only pubkey>
     :param script: Script to be analyzed.
-    :type script: bitcoin.core.script.CScript
+    :type script: CScript
     :return: True if the passed in bitcoin CScript is a p2wtr output script.
     :rtype: bool
     """
 
-    if len(script) != 34:
+    if len(cscript) != 34:
         return False
-    return script[0] == bitcoin.core.script.OP_1
+    return cscript[0] == script.OP_1
 
 
 class BitcoinParser(DataExtractor):
@@ -415,12 +424,11 @@ class BitcoinParser(DataExtractor):
 
         for block in blockchain.get_ordered_blocks(
             os.path.expanduser(str(self._blockchain_path.absolute()) + "/blocks/index"),
-            end=2100000,
         ):
             height += 1
             for (tx_index, tx) in enumerate(block.transactions):
                 total_txs += 1
-                c_tx = bitcoin.core.CTransaction.deserialize(tx.hex)
+                c_tx: CTransaction = CTransaction.deserialize(tx.hex)
                 for (input_index, input) in enumerate(c_tx.vin):
                     tx_inputs += 1
                     if len(input.scriptSig) < 2:

@@ -3,3 +3,11 @@ bitcoin
 test.db
 __pycache__
 bachelorarbeit
+
+*.txt
+*.png
+*.pdf
+*.jpeg
+*.csv
+*.gif
+*.db

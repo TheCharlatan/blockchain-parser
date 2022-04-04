@@ -78,7 +78,7 @@ if __name__ == "__main__":
     """Main function"""
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Tool for parsing and analysing various blockchain data",
+        description="Tool for parsing and analysing blockchains and their embedded data",
     )
     parser.add_argument(
         "-d",
