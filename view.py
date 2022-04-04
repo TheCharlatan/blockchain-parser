@@ -130,7 +130,7 @@ class View:
         plt.setp(ax3.get_xticklabels(), fontsize=7, rotation="vertical")
         plt.subplots_adjust(hspace=0.35)
 
-        plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
+        plt.savefig("ascii_histogram_" + self._blockchain.value + ".png", dpi=600)
         plt.show()
 
     def ascii_histogram(self):
@@ -184,7 +184,7 @@ class View:
         plt.setp(ax2.get_xticklabels(), fontsize=7, rotation="vertical")
         plt.subplots_adjust(hspace=0.43)
 
-        plt.savefig("ascii_histogram_" + self._blockchain.value + ".pdf", dpi=600)
+        plt.savefig("ascii_histogram_" + self._blockchain.value + ".png", dpi=600)
         plt.show()
 
     def magic_file_histogram(self):
@@ -430,7 +430,7 @@ class View:
         # ax1.set_title(self._blockchain.value + " Count of magic detected file types")
         plt.setp(ax1.get_xticklabels(), fontsize=12, rotation="vertical")
         plt.subplots_adjust(bottom=0.41)
-        plt.savefig("magic_file_histogram_" + self._blockchain.value + ".pdf", dpi=600)
+        plt.savefig("magic_file_histogram_" + self._blockchain.value + ".png", dpi=600)
         plt.show()
 
     def imghdr_file_histogram(self):
@@ -459,7 +459,7 @@ class View:
         ax1.set_ylabel("counts")
         # ax1.set_title(self._blockchain.value + " Count of imghdr detected file types")
         plt.setp(ax1.get_xticklabels(), fontsize=12, rotation="vertical")
-        plt.savefig("imghdr_file_histogram_" + self._blockchain.value + ".pdf", dpi=600)
+        plt.savefig("imghdr_file_histogram_" + self._blockchain.value + ".png", dpi=600)
         plt.show()
 
     def __init__(self, blockchain: Optional[BLOCKCHAIN], database: Database):
