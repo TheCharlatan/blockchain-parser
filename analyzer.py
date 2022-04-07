@@ -133,9 +133,10 @@ def find_file_with_magic(data: bytes) -> Optional[str]:
         if res == "data":
             res = magic_handle.from_buffer(data[1:])
     except BaseException as e:
+        print("offending data:", data)
         print(e)
         # ignore any exceptions and return None
-        return None
+        raise e
     if (
         res == "data"
         or res == "shared library"
