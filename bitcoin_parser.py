@@ -309,7 +309,7 @@ def is_p2sh_output(cscript: CScript) -> bool:
 
 def is_p2ms_output(cscript: CScript) -> bool:
     """Checks if the output script is of the form:
-            OP_N <pubkeys> OP_N OP_CHECKMULTISIG
+            OP_N [OP_N] <pubkeys> [OP_N] OP_N OP_CHECKMULTISIG
     :param script: Script to be analyzed.
     :type script: bitcoin.core.script.CSCript
     :return: True if the passed in bitcoin CScript is a p2ms output script.
@@ -318,14 +318,33 @@ def is_p2ms_output(cscript: CScript) -> bool:
 
     if len(cscript) < 33:
         return False
-    if cscript[0] not in opcode_counters.keys():
+    analyze_script = []
+    for item in script:
+        analyze_script.append(item)
+
+    if analyze_script[-1] != OP_CHECKMULTISIG:
         return False
-    if cscript[-2] not in opcode_counters.keys():
-        return False
-    num_pubkeys = opcode_counters[cscript[-2]]
-    if not is_pubkeys(cscript[2:-2], num_pubkeys):
-        return False
-    return cscript[-1] == script.OP_CHECKMULTISIG
+
+    if type(analyze_script[0]) == int and type(analyze_script[-2]) == int:
+        first_key_index = 1
+        last_key_index = len(analyze_script) - 3
+        n = analyze_script[-2]
+        if (type(analyze_script[1]) == int): # There might be another value here for the extended multisig encodign
+            first_key_index = 2
+        if (type(analyze_script[-3]) == int): # There also might be another value here for the extended multisig encoding
+            n += analyze_script[-3]
+            last_key_index = len(analyze_script) - 4
+        
+        if len(analyze_script[first_key_index:last_key_index+1]) != n:
+            print("Wrong number of pubkeys: ", len(analyze_script[first_key_index:last_key_index+1]), "Expected: ", n)
+            return False
+        
+        for pubkey in analyze_script[first_key_index:last_key_index+1]:
+            if type(pubkey) != bytes:
+                return False
+        
+        return True
+    return False
 
 
 def is_p2wpkh_output(cscript: CScript) -> bool:
